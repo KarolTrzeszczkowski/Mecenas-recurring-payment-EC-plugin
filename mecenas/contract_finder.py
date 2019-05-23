@@ -53,9 +53,12 @@ def get_contract_address(outputs):
     for o in outputs:
         if isinstance(o[1], ScriptOutput):
             try:
-                return o[1].to_ui_string().split("'")[1]
+                a=o[1].to_ui_string().split("'")[1]
+                return Address.from_string(a).to_ui_string()
             except:
                 pass
+
+
 
 def get_candidates(outputs):
     """Creates all permutations of addresses that are not p2sh type"""

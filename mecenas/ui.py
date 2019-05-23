@@ -235,7 +235,6 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
         MyTreeWidget.__init__(self, parent, self.create_menu,[
             _('Id'),
             _('Contract expires in: '),
-            _('Refresh lock: '),
             _('Amount'),
             _('My role')], None, deferred_updates=False)
         self.contracts = contracts
@@ -269,7 +268,7 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
         else:
             for c in self.contracts:
                 for m in c[MODE]:
-                    contract = QTreeWidgetItem([c[CONTRACT].address.to_ui_string(),'','','',role_name(m)])
+                    contract = QTreeWidgetItem([c[CONTRACT].address.to_ui_string(),'','',role_name(m)])
                     contract.setData(1, Qt.UserRole, c)
                     contract.setData(2,Qt.UserRole, m)
                     self.addChild(contract)
@@ -282,7 +281,7 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
         expiration = self.estimate_expiration(x,c)
         amount = self.parent.format_amount(x.get('value'), is_diff=False, whitespaces=True)
         mode = role_name(m)
-        utxo_item = SortableTreeWidgetItem([x['tx_hash'][:10]+'...', expiration, '', amount, mode])
+        utxo_item = SortableTreeWidgetItem([x['tx_hash'][:10]+'...', expiration, amount, mode])
         utxo_item.setData(0, Qt.UserRole, x)
         utxo_item.setData(1, Qt.UserRole, c)
         utxo_item.setData(2, Qt.UserRole, m)
