@@ -1,7 +1,3 @@
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from electroncash_gui.qt.util import MyTreeWidget, MessageBoxMixin
 from electroncash.address import  OpCodes
 import time
 

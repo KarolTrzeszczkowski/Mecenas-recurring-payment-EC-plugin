@@ -2,11 +2,11 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
+import electroncash.web as web
 import webbrowser
 from .mecenas_contract import MecenasContract
-from electroncash.address import ScriptOutput
+from electroncash.address import ScriptOutput, OpCodes, Address
 from electroncash.transaction import Transaction,TYPE_ADDRESS, TYPE_SCRIPT
-import electroncash.web as web
 from electroncash_gui.qt.amountedit  import BTCAmountEdit
 from electroncash.i18n import _
 from electroncash_gui.qt.util import *
@@ -16,7 +16,6 @@ from electroncash_gui.qt.transaction_dialog import show_transaction
 from .contract_finder import find_contract
 from .mecenas_contract import ContractManager, UTXO, CONTRACT, MODE
 from .util import *
-import time, json
 from math import ceil
 
 
@@ -105,7 +104,6 @@ class Create(QDialog, MessageBoxMixin):
 
     def __init__(self, parent, plugin, wallet_name, password, manager):
         QDialog.__init__(self, parent)
-        print("Creating")
         self.main_window = parent
         self.wallet=parent.wallet
         self.plugin = plugin
@@ -125,7 +123,9 @@ class Create(QDialog, MessageBoxMixin):
         self.mecenas_address = self.wallet.get_unused_address()
         self.protege_address=None
         self.cold_address=None
-        self.value=0
+        self.total_value=0
+        self.rpayment_value=0
+        self.rpayment_time=0
         index = self.wallet.get_address_index(self.mecenas_address)
         key = self.wallet.keystore.get_private_key(index,self.password)
         self.privkey = int.from_bytes(key[0], 'big')
@@ -155,16 +155,31 @@ class Create(QDialog, MessageBoxMixin):
         l = QLabel(_("Protege address: "))
         grid.addWidget(l, 0, 0)
 
-        l = QLabel(_("Value"))
+        l = QLabel(_("Total value"))
         grid.addWidget(l, 0, 1)
 
         self.protege_address_wid = QLineEdit()
         self.protege_address_wid.textEdited.connect(self.mecenate_info_changed)
         grid.addWidget(self.protege_address_wid, 1, 0)
 
-        self.deposit_value_wid = BTCAmountEdit(self.main_window.get_decimal_point)
-        self.deposit_value_wid.textEdited.connect(self.mecenate_info_changed)
-        grid.addWidget(self.deposit_value_wid, 1, 1)
+        self.total_value_wid = BTCAmountEdit(self.main_window.get_decimal_point)
+        self.total_value_wid.textEdited.connect(self.mecenate_info_changed)
+        grid.addWidget(self.total_value_wid, 1, 1)
+        l = QLabel(_("Recurring payment value: "))
+        grid.addWidget(l, 2, 0)
+
+        l = QLabel(_("Period (days): "))
+        grid.addWidget(l, 2, 1)
+
+        self.rpayment_value_wid = BTCAmountEdit(self.main_window.get_decimal_point)
+        self.rpayment_value_wid.setAmount(1000)
+        self.rpayment_value_wid.textEdited.connect(self.mecenate_info_changed)
+
+        self.rpayment_time_wid = QLineEdit()
+        self.rpayment_time_wid.setText("30")
+        self.rpayment_time_wid.textEdited.connect(self.mecenate_info_changed)
+        grid.addWidget(self.rpayment_value_wid,3,0)
+        grid.addWidget(self.rpayment_time_wid,3,1)
 
         b = QPushButton(_("Create Mecenas Contract"))
         b.clicked.connect(lambda: self.create_mecenat())
@@ -179,54 +194,43 @@ class Create(QDialog, MessageBoxMixin):
             # if any of the txid/out#/value changes
         try:
             self.protege_address = Address.from_string(self.protege_address_wid.text())
-            self.value = self.deposit_value_wid.get_amount()
+            self.total_value = self.total_value_wid.get_amount()
+            self.rpayment_time = int(self.rpayment_time_wid.text())*3600*24//512
+            self.rpayment_value = self.rpayment_value_wid.get_amount()
         except:
             self.create_button.setDisabled(True)
         else:
             self.create_button.setDisabled(False)
             addresses = [self.protege_address, self.mecenas_address]
-            self.contract=MecenasContract(addresses)
+            self.contract=MecenasContract(addresses, v=1,data=[self.rpayment_time, self.rpayment_value])
 
 
 
     def create_mecenat(self, ):
-
-        outputs = [(TYPE_SCRIPT, ScriptOutput(make_opreturn(self.contract.address.to_ui_string().encode('utf8'))),0),
-                   (TYPE_ADDRESS, self.mecenas_address, self.value + 190),
-                   (TYPE_ADDRESS, self.protege_address, 546)]
+        yorn = self.main_window.question(_(
+            "Do you wish to create the Mecenas Contract?"))
+        if not yorn:
+            return
+        outputs = [(TYPE_SCRIPT, ScriptOutput(self.contract.op_return),0),
+                   (TYPE_ADDRESS, self.mecenas_address, 546),
+                   (TYPE_ADDRESS, self.protege_address, 546),
+                   (TYPE_ADDRESS, self.contract.address, self.total_value)]
         try:
             tx = self.wallet.mktx(outputs, self.password, self.config,
                                   domain=self.fund_domain, change_addr=self.fund_change_address)
-            id = tx.txid()
         except NotEnoughFunds:
             return self.show_critical(_("Not enough balance to fund smart contract."))
         except Exception as e:
             return self.show_critical(repr(e))
-
-        # preparing transaction, contract can't give a change
-        self.main_window.network.broadcast_transaction2(tx)
+        tx.version=2
+        try:
+            self.main_window.network.broadcast_transaction2(tx)
+        except:
+            pass
         self.create_button.setText("Creating Mecenas Contract...")
         self.create_button.setDisabled(True)
-        coin = self.wait_for_coin(id,10)
-        self.wallet.add_input_info(coin)
-        inputs = [coin]
-        outputs = [(TYPE_ADDRESS, self.contract.address, self.value)]
-        tx = Transaction.from_io(inputs, outputs, locktime=0)
-        tx.version=2
-        show_transaction(tx, self.main_window, "Make Mecenas Contract", prompt_if_unsaved=True)
         self.plugin.switch_to(Intro, self.wallet_name, None, None)
 
-
-    def wait_for_coin(self, id, timeout=10):
-        for j in range(timeout):
-            coins = self.wallet.get_spendable_coins(None, self.config)
-            for c in coins:
-                if c.get('prevout_hash') == id:
-                    if c.get('value')==self.value+190:
-                        return c
-            time.sleep(1)
-            print("Waiting for coin: "+str(j)+"s")
-        return None
 
 
 class contractTree(MyTreeWidget, MessageBoxMixin):
@@ -234,7 +238,7 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
     def __init__(self, parent, contracts):
         MyTreeWidget.__init__(self, parent, self.create_menu,[
             _('Id'),
-            _('Contract expires in: '),
+            _('Pledge available in: '),
             _('Amount'),
             _('My role')], None, deferred_updates=False)
         self.contracts = contracts
@@ -261,20 +265,20 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
         return contract, index, m
 
     def on_update(self):
-        if len(self.contracts) == 1 and len(self.contracts[0][UTXO])==1:
-            x = self.contracts[0][UTXO][0]
-            item = self.add_item(x, self, self.contracts[0],self.contracts[0][MODE][0])
-            self.setCurrentItem(item)
-        else:
-            for c in self.contracts:
-                for m in c[MODE]:
-                    contract = QTreeWidgetItem([c[CONTRACT].address.to_ui_string(),'','',role_name(m)])
-                    contract.setData(1, Qt.UserRole, c)
-                    contract.setData(2,Qt.UserRole, m)
-                    self.addChild(contract)
-                    for x in c[UTXO]:
-                        item = self.add_item(x, contract, c, m)
-                        self.setCurrentItem(item)
+        # if len(self.contracts) == 1 and len(self.contracts[0][UTXO])==1:
+        #     x = self.contracts[0][UTXO][0]
+        #     item = self.add_item(x, self, self.contracts[0],self.contracts[0][MODE][0])
+        #     self.setCurrentItem(item)
+        # else:
+        for c in self.contracts:
+            for m in c[MODE]:
+                contract = QTreeWidgetItem([c[CONTRACT].address.to_ui_string(),'','',role_name(m)])
+                contract.setData(1, Qt.UserRole, c)
+                contract.setData(2,Qt.UserRole, m)
+                self.addChild(contract)
+                for x in c[UTXO]:
+                    item = self.add_item(x, contract, c, m)
+                    self.setCurrentItem(item)
 
 
     def add_item(self, x, parent_item, c, m):
@@ -286,7 +290,6 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
         utxo_item.setData(1, Qt.UserRole, c)
         utxo_item.setData(2, Qt.UserRole, m)
         parent_item.addChild(utxo_item)
-
         return utxo_item
 
 
@@ -339,7 +342,7 @@ class Manage(QDialog, MessageBoxMixin):
         b = QPushButton(_("Create new Mecenas Contract"))
         b.clicked.connect(lambda: self.plugin.switch_to(Create, self.wallet_name, None, self.manager))
         hbox.addWidget(b)
-        self.take_pledge_label = _("Take Pledge")
+        self.take_pledge_label = _("Take payment from pledge")
         self.end_label = _("End")
         vbox.addStretch(1)
         self.button = QPushButton("lol")
@@ -389,8 +392,8 @@ class Manage(QDialog, MessageBoxMixin):
         inputs = self.manager.txin
         # Mark style fee estimation
         outputs = [
-            (TYPE_ADDRESS, self.manager.contract.address, self.manager.value - self.fee - self.manager.pledge),
-            (TYPE_ADDRESS, self.manager.contract.addresses[self.manager.mode], self.manager.pledge)        ]
+            (TYPE_ADDRESS, self.manager.contract.address, self.manager.value - self.fee - self.manager.rpayment),
+            (TYPE_ADDRESS, self.manager.contract.addresses[self.manager.mode], self.manager.rpayment)        ]
 
         tx = Transaction.from_io(inputs, outputs, locktime=0)
         tx.version = 2

@@ -2,9 +2,6 @@
 from .mecenas_contract import MecenasContract
 from electroncash.address import Address, ScriptOutput
 from itertools import permutations, combinations
-from electroncash.transaction import Transaction
-from collections import OrderedDict
-
 
 
 def find_contract(wallet):
@@ -15,16 +12,20 @@ def find_contract(wallet):
         out = t.outputs()
         address = ''
         if len(out) > 2:
-            address = get_contract_address(out)
+            address, v, data  = get_contract_info(out)
+            if address is None or v is None or data is None:
+                continue
             candidates = get_candidates(out)
             for c in candidates:
-                mec = MecenasContract(c,t.as_dict())
-                if mec.address.to_ui_string()==address:
+                mec = MecenasContract(c,t.as_dict(),v=v, data=data)
+                if mec.address.to_ui_string() == address:
+                        print("asking")
                         response = wallet.network.synchronous_get(
                             ("blockchain.scripthash.listunspent", [mec.address.to_scripthash_hex()]))
                         if unfunded_contract(response) : #skip unfunded and ended contracts
                             continue
                         contracts.append(( response, mec, find_my_role(c, wallet)))
+
     remove_duplicates(contracts)
     return contracts
 
@@ -32,10 +33,11 @@ def find_contract(wallet):
 
 
 def remove_duplicates(contracts):
+    c = contracts
     for c1, c2 in combinations(contracts,2):
         if c1[1].address == c2[1].address:
-            contracts = contracts.remove(c1)
-    return contracts
+            c.remove(c1)
+    return c
 
 def unfunded_contract(r):
     """Checks if the contract is funded"""
@@ -48,15 +50,22 @@ def unfunded_contract(r):
     return s
 
 
-def get_contract_address(outputs):
+def get_contract_info(outputs):
     """Finds p2sh output"""
     for o in outputs:
-        if isinstance(o[1], ScriptOutput):
-            try:
-                a=o[1].to_ui_string().split("'")[1]
-                return Address.from_string(a).to_ui_string()
-            except:
-                pass
+        try:
+            assert isinstance(o[1], ScriptOutput)
+            assert o[1].to_ui_string().split(",")[1] == " (4) '>sh\\x00'"
+            a = o[1].to_ui_string().split("'")[3][:42]
+            version = int(o[1].to_ui_string().split("'")[3][42:])
+            data =[int(e) for e in o[1].to_ui_string().split("'")[5].split(' ')]
+            print("Data: ")
+            print(data)
+            assert 0 <= version <= 1
+            return Address.from_string(a).to_ui_string(), version, data
+        except:
+            continue
+    return None, None, None
 
 
 
