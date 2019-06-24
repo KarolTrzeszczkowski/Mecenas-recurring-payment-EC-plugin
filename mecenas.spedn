@@ -1,6 +1,13 @@
-contract Mecenas(Ripemd160 pkh, Ripemd160 pkh2, int pledge) {
+contract LastWill(Ripemd160 pkh, Ripemd160 pkh2, int pledge) {
     challenge protege(PubKey pk, Sig sig, bin ver, bin hPhSo, bin scriptCode, bin value, bin nSequence, bin hashOutput, bin tail ) {
-        verify hash160(pk) == pkh;
+        verify size(ver) == 4;
+        verify size(hPhSo) == 100;
+        verify size(value) == 8;
+        verify size(nSequence) == 4;
+        verify size(hashOutput) == 32;
+        verify size(tail) == 8;
+
+        //verify hash160(pk) == pkh;
         verify checkSig(sig, pk);
         bin preimage = ver . hPhSo . scriptCode . value . nSequence . hashOutput . tail;
         verify checkDataSig(toDataSig(sig), sha256(preimage), pk); 
@@ -17,7 +24,7 @@ contract Mecenas(Ripemd160 pkh, Ripemd160 pkh2, int pledge) {
         bin opEqualverify = 0x88;
         bin opChecksig = 0xac;
 
-        bin [_, rawscr] = scriptCode @ 1;
+        bin [_, rawscr] = scriptCode @ 3;
         verify checkSequence(30d);
         verify bin2num(ver) >= 2;
 

@@ -39,7 +39,47 @@ class MecenasContract:
         assert len(self.i_time_bytes) == 2
         assert len(self.rpayment_bytes) < 76 # Better safe than sorry
 
-
+        ## script version containing p2pkh part in protege challenge, future version 2 of the script?
+        # self.redeemscript = joinbytes([
+        #     len(addresses[0].hash160), addresses[0].hash160,
+        #     len(addresses[1].hash160), addresses[1].hash160,
+        #     len(self.rpayment_bytes), self.rpayment_bytes,
+        #     Op.OP_3, Op.OP_PICK, Op.OP_TRUE, Op.OP_EQUAL,
+        #     Op.OP_IF,
+        #         Op.OP_10, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, Op.OP_4, Op.OP_EQUALVERIFY, Op.OP_9, Op.OP_PICK, Op.OP_SIZE,
+        #         Op.OP_NIP, 1, 100, Op.OP_EQUALVERIFY, Op.OP_7, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, Op.OP_8,
+        #         Op.OP_EQUALVERIFY, Op.OP_6, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, Op.OP_4, Op.OP_EQUALVERIFY, Op.OP_5,
+        #         Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, 1, 32, Op.OP_EQUALVERIFY, Op.OP_4, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP,
+        #         Op.OP_8, Op.OP_EQUALVERIFY, Op.OP_12, Op.OP_PICK, Op.OP_HASH160, Op.OP_3, Op.OP_PICK, Op.OP_EQUALVERIFY,
+        #         Op.OP_11, Op.OP_PICK, Op.OP_13, Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_10, Op.OP_PICK, Op.OP_10,
+        #         Op.OP_PICK, Op.OP_CAT, Op.OP_9, Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK,
+        #         Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_12, Op.OP_PICK, Op.OP_SIZE,
+        #         Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_OVER, Op.OP_SHA256, Op.OP_15, Op.OP_PICK,
+        #         Op.OP_CHECKDATASIGVERIFY, 2, 232, 3, Op.OP_2, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_10, Op.OP_PICK,
+        #         Op.OP_BIN2NUM, Op.OP_4, Op.OP_PICK, Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN, 1,
+        #         118, 1, 135, 1, 169, 1, 20, 1, 23, 1, 25, 1, 136, 1, 172, 1, 20, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT,
+        #         Op.OP_NIP, 3, self.i_time_bytes, 64, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, 1, 23, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_2,
+        #         Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_7,
+        #         Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_OVER, Op.OP_HASH160, Op.OP_CAT, Op.OP_8,
+        #         Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_10, Op.OP_PICK,
+        #         Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, 1, 17, Op.OP_PICK, Op.OP_CAT,
+        #         Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3, Op.OP_PICK, Op.OP_CAT, Op.OP_2DUP, Op.OP_CAT, Op.OP_HASH256, 1, 21,
+        #         Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+        #         Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+        #         Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+        #         Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+        #     Op.OP_ELSE,
+        #         Op.OP_3, Op.OP_PICK, Op.OP_2, Op.OP_EQUAL,
+        #         Op.OP_IF,
+        #             Op.OP_5, Op.OP_PICK, Op.OP_HASH160, Op.OP_2, Op.OP_PICK, Op.OP_EQUALVERIFY, Op.OP_4, Op.OP_PICK, Op.OP_6,
+        #             Op.OP_PICK, Op.OP_CHECKSIG, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+        #         Op.OP_ELSE,
+        #             Op.OP_FALSE,
+        #         Op.OP_ENDIF,
+        #     Op.OP_ENDIF
+        #
+        # ])
+        ## script version without p2pkh part in protege challenge, version 1 of the script?
         self.redeemscript = joinbytes([
             len(addresses[0].hash160), addresses[0].hash160,
             len(addresses[1].hash160), addresses[1].hash160,
@@ -50,11 +90,10 @@ class MecenasContract:
                 Op.OP_NIP, 1, 100, Op.OP_EQUALVERIFY, Op.OP_7, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, Op.OP_8,
                 Op.OP_EQUALVERIFY, Op.OP_6, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, Op.OP_4, Op.OP_EQUALVERIFY, Op.OP_5,
                 Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, 1, 32, Op.OP_EQUALVERIFY, Op.OP_4, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP,
-                Op.OP_8, Op.OP_EQUALVERIFY, Op.OP_12, Op.OP_PICK, Op.OP_HASH160, Op.OP_3, Op.OP_PICK, Op.OP_EQUALVERIFY,
-                Op.OP_11, Op.OP_PICK, Op.OP_13, Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_10, Op.OP_PICK, Op.OP_10,
-                Op.OP_PICK, Op.OP_CAT, Op.OP_9, Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK,
-                Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_12, Op.OP_PICK, Op.OP_SIZE,
-                Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_OVER, Op.OP_SHA256, Op.OP_15, Op.OP_PICK,
+                Op.OP_8, Op.OP_EQUALVERIFY, Op.OP_11, Op.OP_PICK, Op.OP_13, Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_10,
+                Op.OP_PICK, Op.OP_10, Op.OP_PICK, Op.OP_CAT, Op.OP_9, Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT,
+                Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_12,
+                Op.OP_PICK, Op.OP_SIZE, Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_OVER, Op.OP_SHA256, Op.OP_15, Op.OP_PICK,
                 Op.OP_CHECKDATASIGVERIFY, 2, 232, 3, Op.OP_2, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_10, Op.OP_PICK,
                 Op.OP_BIN2NUM, Op.OP_4, Op.OP_PICK, Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN, 1,
                 118, 1, 135, 1, 169, 1, 20, 1, 23, 1, 25, 1, 136, 1, 172, 1, 20, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT,
@@ -79,6 +118,7 @@ class MecenasContract:
             Op.OP_ENDIF
 
         ])
+
         self.address = Address.from_multisig_script(self.redeemscript)
 
         data1 = self.address.to_ui_string() + ' ' + str(self.version)
