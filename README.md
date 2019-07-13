@@ -93,7 +93,7 @@ The contract is designed to be integrated with other services in a non-custodial
 
 ## Disclaimer
 
-The author of this software is not a party to a Last Will contract, have no control over it and cannot influence it's outcome. The author is not responsible for legal implications of the Last Will contract nor is competent to settle any disputes. The author is not responsible for the contract expected behavior.
+The author of this software is not a party to a Mecenas contract, have no control over it and cannot influence it's outcome. The author is not responsible for legal implications of the Mecenas contract nor is competent to settle any disputes. The author is not responsible for the contract expected behavior.
 
 ## License
 

@@ -67,7 +67,7 @@ class Intro(QDialog, MessageBoxMixin):
             self.plugin.switch_to(Manage, self.wallet_name, self.password, self.manager)
         except Exception as es:
             print(es)
-            self.show_error("Wrong wallet.")
+            # self.show_error("Wrong password.")
             self.plugin.switch_to(Intro,self.wallet_name,None,None)
 
     def get_keypairs_for_contracts(self, contracts):
@@ -76,6 +76,11 @@ class Intro(QDialog, MessageBoxMixin):
                 "Contract found! Plugin requires password to operate. It will get access to your private keys."))
             self.password = self.main_window.password_dialog()
             if not self.password:
+                return
+            try:
+                self.wallet.keystore.get_private_key((True,0), self.password)
+            except:
+                self.show_error("Wrong password.")
                 return
         keypairs = dict()
         public_keys=[]
@@ -172,7 +177,7 @@ class Create(QDialog, MessageBoxMixin):
         grid.addWidget(l, 2, 1)
 
         self.rpayment_value_wid = BTCAmountEdit(self.main_window.get_decimal_point)
-        self.rpayment_value_wid.setAmount(1000)
+        self.rpayment_value_wid.setAmount(1000000)
         self.rpayment_value_wid.textEdited.connect(self.mecenate_info_changed)
 
         self.rpayment_time_wid = QLineEdit()
@@ -237,9 +242,10 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
 
     def __init__(self, parent, contracts):
         MyTreeWidget.__init__(self, parent, self.create_menu,[
-            _('Id'),
+            _('Contract address'),
             _('Pledge available in: '),
             _('Amount'),
+            _('Recurring value'),
             _('My role')], None, deferred_updates=False)
         self.contracts = contracts
         self.main_window = parent
@@ -272,7 +278,7 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
         # else:
         for c in self.contracts:
             for m in c[MODE]:
-                contract = QTreeWidgetItem([c[CONTRACT].address.to_ui_string(),'','',role_name(m)])
+                contract = QTreeWidgetItem([c[CONTRACT].address.to_ui_string(),'','','',role_name(m)])
                 contract.setData(1, Qt.UserRole, c)
                 contract.setData(2,Qt.UserRole, m)
                 self.addChild(contract)
@@ -284,8 +290,9 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
     def add_item(self, x, parent_item, c, m):
         expiration = self.estimate_expiration(x,c)
         amount = self.parent.format_amount(x.get('value'), is_diff=False, whitespaces=True)
+        value = self.parent.format_amount(c[CONTRACT].rpayment, is_diff=False, whitespaces=True)
         mode = role_name(m)
-        utxo_item = SortableTreeWidgetItem([x['tx_hash'][:10]+'...', expiration, amount, mode])
+        utxo_item = SortableTreeWidgetItem([x['tx_hash'][:10]+'...', expiration, amount, value, mode])
         utxo_item.setData(0, Qt.UserRole, x)
         utxo_item.setData(1, Qt.UserRole, c)
         utxo_item.setData(2, Qt.UserRole, m)
@@ -368,13 +375,14 @@ class Manage(QDialog, MessageBoxMixin):
 
 
     def end(self):
+        print("end")
         inputs = self.manager.txin
         # Mark style fee estimation
         outputs = [
             (TYPE_ADDRESS, self.manager.contract.addresses[self.manager.mode], self.manager.value)]
         tx = Transaction.from_io(inputs, outputs, locktime=0)
         tx.version = 2
-        fee = len(tx.serialize(True)) // 2
+        fee = len(tx.serialize(True)) // 2+1
         if fee > self.manager.value:
             self.show_error("Not enough funds to make the transaction!")
             return
@@ -389,6 +397,7 @@ class Manage(QDialog, MessageBoxMixin):
         self.plugin.switch_to(Manage, self.wallet_name, None, None)
 
     def pledge(self):
+        print("pledge")
         inputs = self.manager.txin
         # Mark style fee estimation
         outputs = [
