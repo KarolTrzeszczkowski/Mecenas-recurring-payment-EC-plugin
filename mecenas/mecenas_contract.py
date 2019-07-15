@@ -141,7 +141,7 @@ class ContractManager:
         self.keypair = keypairs
         self.pubkeys = public_keys
         self.wallet = wallet
-        self.rpayment=self.contract.rpayment
+        self.rpayment = self.contract.rpayment
         self.dummy_scriptsig = '00'*(110 + len(self.contract.redeemscript))
         if self.mode == 0:
             self.sequence=2**22+self.contract.i_time
@@ -156,6 +156,7 @@ class ContractManager:
         self.chosen_utxo=utxo_index
         self.contract = contract[CONTRACT]
         self.contract_index = self.contracts.index(contract)
+        self.rpayment = contract[CONTRACT].rpayment
         self.mode = m
         if self.mode == 0:
             self.sequence=2**22+self.contract.i_time

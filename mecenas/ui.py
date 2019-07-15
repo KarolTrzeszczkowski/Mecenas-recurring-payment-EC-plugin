@@ -406,6 +406,7 @@ class Manage(QDialog, MessageBoxMixin):
 
         tx = Transaction.from_io(inputs, outputs, locktime=0)
         tx.version = 2
+        print(tx.outputs())
         if not self.wallet.is_watching_only():
             self.manager.signtx(tx)
             self.manager.completetx_ref(tx)
