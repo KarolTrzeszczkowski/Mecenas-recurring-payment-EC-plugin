@@ -16,7 +16,7 @@ Mecenas was created as **a solution** for bitcoin **patronate** exit scam risk. 
 
 ## Quick start
 
-1. First, download and verify sha256 of the mecenas-vVERSION.zip file from [relesases](). Then go to your Electron Cash and install the plugin,
+1. First, download and verify sha256 of the mecenas-vVERSION.zip file from [relesases](https://github.com/KarolTrzeszczkowski/Mecenas-recurring-payment-EC-plugin/releases). Then go to your Electron Cash and install the plugin,
 2. The plugin tab should show up. Click "Create new Mecenas contract" if you want to become someone elses [mecenas](https://en.wikipedia.org/wiki/Gaius_Maecenas#Maecenate_(patronage)) or
 3. click "Find existing Mecenas contract" if you already are in a mecenas-protege relationship.
 
@@ -105,7 +105,7 @@ With any problems contact me on telegram: **@licho92karol**, reddit: **u/Licho92
 
 ## Mecenate and donations
 
-If you wish to support development of the [Mecenas plugin](), [Last Will plugin](https://github.com/KarolTrzeszczkowski/Electron-Cash-Last-Will-Plugin), [Inter-Wallet transfer plugin](https://github.com/KarolTrzeszczkowski/Electron-Cash-Plugin-Template), consider **becoming my mecenas** for the address:
+If you wish to support development of the [Mecenas plugin](https://github.com/KarolTrzeszczkowski/Mecenas-recurring-payment-EC-plugin), [Last Will plugin](https://github.com/KarolTrzeszczkowski/Electron-Cash-Last-Will-Plugin), [Inter-Wallet transfer plugin](https://github.com/KarolTrzeszczkowski/Inter-Wallet-Transfer-EC-plugin), consider **becoming my mecenas** for the address:
 
 bitcoincash:qq93dq0j3uez8m995lrkx4a6n48j2fckfuwdaqeej2
 
