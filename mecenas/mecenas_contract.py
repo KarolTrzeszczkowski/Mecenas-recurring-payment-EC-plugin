@@ -135,7 +135,7 @@ class ContractManager:
         self.contracts = contracts
         self.contract_index=0
         self.chosen_utxo = 0
-        self.tx = contracts[self.contract_index][0][UTXO]
+        self.tx = contracts[self.contract_index][UTXO][self.chosen_utxo]
         self.contract = contracts[self.contract_index][CONTRACT]
         self.mode = contracts[self.contract_index][MODE][0]
         self.keypair = keypairs
@@ -162,6 +162,7 @@ class ContractManager:
             self.sequence=2**22+self.contract.i_time
         else:
             self.sequence = 0
+        print([self.pubkeys[self.contract_index][self.mode]])
         utxo = contract[UTXO][utxo_index]
         if (utxo_index == -1) and (self.mode != 0):
             for u in contract[UTXO]:
@@ -251,6 +252,7 @@ class ContractManager:
                 nSequence=preimage[-44:-40]
                 hashOutput=preimage[-40:-8]
                 tail=preimage[-8:]
+
 
                 script = [
                     len(pub), pub,
