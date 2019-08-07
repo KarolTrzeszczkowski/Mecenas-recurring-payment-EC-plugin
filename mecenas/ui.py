@@ -14,7 +14,7 @@ from electroncash.wallet import Multisig_Wallet
 from electroncash.util import NotEnoughFunds
 from electroncash_gui.qt.transaction_dialog import show_transaction
 from .contract_finder import find_contract
-from .mecenas_contract import ContractManager, UTXO, CONTRACT, MODE
+from .mecenas_contract import ContractManager, UTXO, CONTRACT, MODE, PROTEGE, MECENAS
 from .util import *
 from math import ceil
 
@@ -30,7 +30,7 @@ class Intro(QDialog, MessageBoxMixin):
         self.config = parent.config
         vbox = QVBoxLayout()
         self.setLayout(vbox)
-        self.contracts=None
+        self.contract_tuple_list=None
         self.contractTx=None
         self.manager=None
         self.password = None
@@ -53,8 +53,8 @@ class Intro(QDialog, MessageBoxMixin):
         vbox.addStretch(1)
 
     def handle_finding(self):
-        self.contracts = find_contract(self.wallet)
-        if len(self.contracts):
+        self.contract_tuple_list = find_contract(self.wallet)
+        if len(self.contract_tuple_list):
             self.start_manager()
         else:
             self.show_error("You are not a party in any contract yet.")
@@ -62,15 +62,15 @@ class Intro(QDialog, MessageBoxMixin):
 
     def start_manager(self):
         try:
-            keypairs, public_keys = self.get_keypairs_for_contracts(self.contracts)
-            self.manager = ContractManager(self.contracts, keypairs,public_keys, self.wallet)
+            keypairs, public_keys = self.get_keypairs_for_contracts(self.contract_tuple_list)
+            self.manager = ContractManager(self.contract_tuple_list, keypairs, public_keys, self.wallet)
             self.plugin.switch_to(Manage, self.wallet_name, self.password, self.manager)
         except Exception as es:
             print(es)
             # self.show_error("Wrong password.")
             self.plugin.switch_to(Intro,self.wallet_name,None,None)
 
-    def get_keypairs_for_contracts(self, contracts):
+    def get_keypairs_for_contracts(self, contract_tuple_list):
         if self.wallet.has_password():
             self.main_window.show_error(_(
                 "Contract found! Plugin requires password to operate. It will get access to your private keys."))
@@ -84,20 +84,19 @@ class Intro(QDialog, MessageBoxMixin):
                 return
         keypairs = dict()
         public_keys=[]
-        for c in contracts:
+        for t in contract_tuple_list:
             public_keys.append(dict())
-            for m in c[MODE]:
-                myAddress=c[CONTRACT].addresses[m]
-                i = self.wallet.get_address_index(myAddress)
+            for m in t[MODE]:
+                my_address=t[CONTRACT].addresses[m]
+                i = self.wallet.get_address_index(my_address)
                 if not self.wallet.is_watching_only():
                     priv = self.wallet.keystore.get_private_key(i, self.password)
                 else:
                     print("watch only")
                     priv = None
                 try:
-                    public = self.wallet.get_public_keys(myAddress)
-
-                    public_keys[contracts.index(c)][m]=public[0]
+                    public = self.wallet.get_public_keys(my_address)
+                    public_keys[contract_tuple_list.index(t)][m]=public[0]
                     keypairs[public[0]] = priv
                 except Exception as ex:
                     print(ex)
@@ -205,8 +204,9 @@ class Create(QDialog, MessageBoxMixin):
             self.create_button.setDisabled(True)
         else:
             self.create_button.setDisabled(False)
+            # PROTEGE is 0, MECENAS is 1
             addresses = [self.protege_address, self.mecenas_address]
-            self.contract=MecenasContract(addresses, v=1,data=[self.rpayment_time, self.rpayment_value])
+            self.contract = MecenasContract(addresses, v=1,data=[self.rpayment_time, self.rpayment_value])
 
 
 
@@ -215,6 +215,8 @@ class Create(QDialog, MessageBoxMixin):
             "Do you wish to create the Mecenas Contract?"))
         if not yorn:
             return
+        # convention used everywhere else in this plugin is is 0 for protege and 1 for mecenas
+        # but I did it upside down here by mistake
         outputs = [(TYPE_SCRIPT, ScriptOutput(self.contract.op_return),0),
                    (TYPE_ADDRESS, self.mecenas_address, 546),
                    (TYPE_ADDRESS, self.protege_address, 546),
@@ -246,7 +248,7 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
             _('Amount'),
             _('Recurring value'),
             _('My role')], None, deferred_updates=False)
-        self.contracts = contracts
+        self.contract_tuple_list = contracts
         self.main_window = parent
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setSortingEnabled(True)
@@ -261,13 +263,13 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
 
     def get_selected_id(self):
         utxo = self.currentItem().data(0, Qt.UserRole)
-        contract = self.currentItem().data(1, Qt.UserRole)
+        contract_tuple = self.currentItem().data(1, Qt.UserRole)
         m = self.currentItem().data(2, Qt.UserRole)
         if utxo == None:
             index = -1
         else:
-            index = contract[UTXO].index(utxo)
-        return contract, index, m
+            index = contract_tuple[UTXO].index(utxo)
+        return contract_tuple, index, m
 
     def on_update(self):
         # if len(self.contracts) == 1 and len(self.contracts[0][UTXO])==1:
@@ -275,25 +277,25 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
         #     item = self.add_item(x, self, self.contracts[0],self.contracts[0][MODE][0])
         #     self.setCurrentItem(item)
         # else:
-        for c in self.contracts:
-            for m in c[MODE]:
-                contract = QTreeWidgetItem([c[CONTRACT].address.to_ui_string(),'','','',role_name(m)])
-                contract.setData(1, Qt.UserRole, c)
+        for t in self.contract_tuple_list:
+            for m in t[MODE]:
+                contract = QTreeWidgetItem([t[CONTRACT].address.to_ui_string(),'','','',role_name(m)])
+                contract.setData(1, Qt.UserRole, t)
                 contract.setData(2,Qt.UserRole, m)
                 self.addChild(contract)
-                for x in c[UTXO]:
-                    item = self.add_item(x, contract, c, m)
+                for u in t[UTXO]:
+                    item = self.add_item(u, contract, t, m)
                     self.setCurrentItem(item)
 
 
-    def add_item(self, x, parent_item, c, m):
-        expiration = self.estimate_expiration(x,c)
-        amount = self.parent.format_amount(x.get('value'), is_diff=False, whitespaces=True)
-        value = self.parent.format_amount(c[CONTRACT].rpayment, is_diff=False, whitespaces=True)
+    def add_item(self, u, parent_item, t, m):
+        expiration = self.estimate_expiration(u, t)
+        amount = self.parent.format_amount(u.get('value'), is_diff=False, whitespaces=True)
+        value = self.parent.format_amount(t[CONTRACT].rpayment, is_diff=False, whitespaces=True)
         mode = role_name(m)
-        utxo_item = SortableTreeWidgetItem([x['tx_hash'][:10]+'...', expiration, amount, value, mode])
-        utxo_item.setData(0, Qt.UserRole, x)
-        utxo_item.setData(1, Qt.UserRole, c)
+        utxo_item = SortableTreeWidgetItem([u['tx_hash'][:10] + '...', expiration, amount, value, mode])
+        utxo_item.setData(0, Qt.UserRole, u)
+        utxo_item.setData(1, Qt.UserRole, t)
         utxo_item.setData(2, Qt.UserRole, m)
         parent_item.addChild(utxo_item)
         return utxo_item
@@ -305,11 +307,11 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
         age = (currentHeight-txHeight)//6
         return age
 
-    def estimate_expiration(self, entry, contr):
+    def estimate_expiration(self, entry, ctuple):
         """estimates age of the utxo in days. There are 144 blocks per day on average"""
         txHeight = entry.get("height")
         age = self.get_age(entry)
-        contract_i_time=ceil((contr[CONTRACT].i_time*512)/(3600))
+        contract_i_time=ceil((ctuple[CONTRACT].i_time * 512) / (3600))
         print("age, contract itime")
         print(age, contract_i_time)
         if txHeight==0 :
@@ -336,7 +338,7 @@ class Manage(QDialog, MessageBoxMixin):
         vbox = QVBoxLayout()
         self.setLayout(vbox)
         self.fee=1000
-        self.contract_tree = contractTree(self.main_window, self.manager.contracts)
+        self.contract_tree = contractTree(self.main_window, self.manager.contract_tuple_list)
         self.contract_tree.on_update()
         vbox.addWidget(self.contract_tree)
         hbox = QHBoxLayout()
@@ -362,7 +364,7 @@ class Manage(QDialog, MessageBoxMixin):
     def update_button(self):
         contract, utxo_index, m = self.contract_tree.get_selected_id()
         self.manager.choice(contract, utxo_index, m)
-        if m == 0:
+        if m == PROTEGE:
             self.button.setText(self.take_pledge_label)
             self.button.clicked.disconnect()
             self.button.clicked.connect(self.pledge)
@@ -415,9 +417,9 @@ class Manage(QDialog, MessageBoxMixin):
 
 
 def role_name(i):
-    if i==0:
+    if i == PROTEGE:
         return "Protege"
-    elif i==1:
+    elif i == MECENAS:
         return "Mecenas"
     else:
         return "unknown role"

@@ -7,7 +7,7 @@ from itertools import permutations, combinations
 def find_contract(wallet):
     """Searching transactions for the one maching contract
     by creating contracts from outputs"""
-    contracts=[]
+    contract_tuple_list=[]
     for hash, t in wallet.transactions.items():
         out = t.outputs()
         address = ''
@@ -24,10 +24,10 @@ def find_contract(wallet):
                             ("blockchain.scripthash.listunspent", [mec.address.to_scripthash_hex()]))
                         if unfunded_contract(response) : #skip unfunded and ended contracts
                             continue
-                        contracts.append(( response, mec, find_my_role(c, wallet)))
+                        contract_tuple_list.append(( response, mec, find_my_role(c, wallet)))
 
-    remove_duplicates(contracts)
-    return contracts
+    remove_duplicates(contract_tuple_list)
+    return contract_tuple_list
 
 
 
@@ -45,7 +45,7 @@ def unfunded_contract(r):
     if len(r) == 0:
         s = True
     for t in r:
-        if t.get('value') == 0: # when contract was drained by fees it's still in utxo
+        if t.get('value') == 0: # when contract was drained it's still in utxo
             s = True
     return s
 
@@ -81,7 +81,7 @@ def get_candidates(outputs):
     return candidates
 
 def find_my_role(candidates, wallet):
-    """Returns my role in this contract. 0 is mecenas, 1 is protege"""
+    """Returns my role in this contract. 0 is protege, 1 is mecenas"""
     roles=[]
     for counter, a in enumerate(candidates, start=0):
         if wallet.is_mine(a):

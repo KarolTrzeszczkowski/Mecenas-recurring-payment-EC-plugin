@@ -10,6 +10,8 @@ CONTRACT=1
 MODE=2
 PLEDGE_TIME=int((0*3600*24))#0.083
 PLEDGE = 1000
+PROTEGE = 0
+MECENAS = 1
 
 
 def joinbytes(iterable):
@@ -27,14 +29,22 @@ class MecenasContract:
         try:
             self.i_time = data[0]
             self.rpayment = data[1]
-
         except:
             print("except")
             self.rpayment = PLEDGE
             self.i_time = PLEDGE_TIME // 512
-        self.i_time_bytes = self.i_time.to_bytes(2, 'little')
 
-        self.rpayment_bytes = self.rpayment.to_bytes(ceil(self.rpayment.bit_length() / 8), 'little')
+        self.i_time_bytes = self.i_time.to_bytes(2, 'little', signed=True)
+        assert self.rpayment >= 0
+        assert self.i_time >= 0
+
+        try:
+            self.rpayment_bytes = self.rpayment.to_bytes(ceil(self.rpayment.bit_length() / 8), 'little', signed=True)
+        except OverflowError:
+            self.rpayment_bytes = self.rpayment.to_bytes(ceil(self.rpayment.bit_length() / 8)+1, 'little', signed=True)
+
+
+
 
         assert len(self.i_time_bytes) == 2
         assert len(self.rpayment_bytes) < 76 # Better safe than sorry
@@ -131,41 +141,41 @@ class MecenasContract:
 
 class ContractManager:
     """A device that spends from a Mecenas Contract in two different ways."""
-    def __init__(self, contracts, keypairs, public_keys, wallet):
-        self.contracts = contracts
+    def __init__(self, contract_tuple_list, keypairs, public_keys, wallet):
+        self.contract_tuple_list = contract_tuple_list
         self.contract_index=0
         self.chosen_utxo = 0
-        self.tx = contracts[self.contract_index][UTXO][self.chosen_utxo]
-        self.contract = contracts[self.contract_index][CONTRACT]
-        self.mode = contracts[self.contract_index][MODE][0]
+        self.tx = contract_tuple_list[self.contract_index][UTXO][self.chosen_utxo]
+        self.contract = contract_tuple_list[self.contract_index][CONTRACT]
+        self.mode = contract_tuple_list[self.contract_index][MODE][0]
         self.keypair = keypairs
         self.pubkeys = public_keys
         self.wallet = wallet
         self.rpayment = self.contract.rpayment
         self.dummy_scriptsig = '00'*(110 + len(self.contract.redeemscript))
-        if self.mode == 0:
+
+        if self.mode == PROTEGE:
             self.sequence=2**22+self.contract.i_time
         else:
             self.sequence = 0
         self.value = int(self.tx.get('value'))
         self.txin = dict()
 
-    def choice(self, contract, utxo_index, m):
+    def choice(self, contract_tuple, utxo_index, m):
         self.value=0
         self.txin=[]
         self.chosen_utxo=utxo_index
-        self.contract = contract[CONTRACT]
-        self.contract_index = self.contracts.index(contract)
-        self.rpayment = contract[CONTRACT].rpayment
+        self.contract = contract_tuple[CONTRACT]
+        self.contract_index = self.contract_tuple_list.index(contract_tuple)
+        self.rpayment = self.contract.rpayment
         self.mode = m
-        if self.mode == 0:
+        if self.mode == PROTEGE:
             self.sequence=2**22+self.contract.i_time
         else:
             self.sequence = 0
-        print([self.pubkeys[self.contract_index][self.mode]])
-        utxo = contract[UTXO][utxo_index]
-        if (utxo_index == -1) and (self.mode != 0):
-            for u in contract[UTXO]:
+        utxo = contract_tuple[UTXO][utxo_index]
+        if (utxo_index == -1) and (self.mode != PROTEGE):
+            for u in contract_tuple[UTXO]:
                 self.value += int(u.get('value'))
                 self.txin.append( dict(
                     prevout_hash=u.get('tx_hash'),
@@ -202,6 +212,7 @@ class ContractManager:
         tx.sign(self.keypair)
 
 
+
     def completetx(self, tx):
         """
         Completes transaction by creating scriptSig. You need to sign the
@@ -229,7 +240,6 @@ class ContractManager:
         tx.raw = tx.serialize()
 
     def completetx_ref(self, tx):
-
         pub = bytes.fromhex(self.pubkeys[self.contract_index][self.mode])
 
         for i, txin in enumerate(tx.inputs()):
@@ -243,7 +253,7 @@ class ContractManager:
             sig = bytes.fromhex(sig)
             print("Signature size:" + str(len(sig)))
             if txin['scriptSig'] == self.dummy_scriptsig:
-                self.checkd_data_sig(sig, preimage, self.pubkeys[self.contract_index][self.mode])
+                #self.checkd_data_sig(sig, preimage, self.pubkeys[self.contract_index][self.mode])
 
                 ver=preimage[:4]
                 hPhSo=preimage[4:104]
