@@ -239,7 +239,8 @@ class Create(QDialog, MessageBoxMixin):
 
 
 
-class contractTree(MyTreeWidget, MessageBoxMixin):
+class ContractTree(MessageBoxMixin, PrintError, MyTreeWidget):
+    update_sig = pyqtSignal()
 
     def __init__(self, parent, contracts):
         MyTreeWidget.__init__(self, parent, self.create_menu,[
@@ -247,19 +248,21 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
             _('Pledge available in: '),
             _('Amount'),
             _('Recurring value'),
-            _('My role')], None, deferred_updates=False)
+            _('My role')],stretch_column=0, deferred_updates=True)
         self.contract_tuple_list = contracts
+        self.monospace_font = QFont(MONOSPACE_FONT)
+
         self.main_window = parent
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setSortingEnabled(True)
+        self.update_sig.connect(self.update)
+        self.timer = QTimer(self)
+        self.timer.setSingleShot(False)
+        self.timer.timeout.connect(self.update_sig)
+        #self.timer.start(2000)
 
     def create_menu(self, position):
         pass
-
-    def update(self):
-        if self.wallet and (not self.wallet.thread or not self.wallet.thread.isRunning()):
-            return
-        super().update()
 
     def get_selected_id(self):
         utxo = self.currentItem().data(0, Qt.UserRole)
@@ -272,6 +275,7 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
         return contract_tuple, index, m
 
     def on_update(self):
+        self.clear()
         # if len(self.contracts) == 1 and len(self.contracts[0][UTXO])==1:
         #     x = self.contracts[0][UTXO][0]
         #     item = self.add_item(x, self, self.contracts[0],self.contracts[0][MODE][0])
@@ -293,7 +297,7 @@ class contractTree(MyTreeWidget, MessageBoxMixin):
         amount = self.parent.format_amount(u.get('value'), is_diff=False, whitespaces=True)
         value = self.parent.format_amount(t[CONTRACT].rpayment, is_diff=False, whitespaces=True)
         mode = role_name(m)
-        utxo_item = SortableTreeWidgetItem([u['tx_hash'][:10] + '...', expiration, amount, value, mode])
+        utxo_item = SortableTreeWidgetItem([u['tx_hash'] , expiration, amount, value, mode])
         utxo_item.setData(0, Qt.UserRole, u)
         utxo_item.setData(1, Qt.UserRole, t)
         utxo_item.setData(2, Qt.UserRole, m)
@@ -338,7 +342,7 @@ class Manage(QDialog, MessageBoxMixin):
         vbox = QVBoxLayout()
         self.setLayout(vbox)
         self.fee=1000
-        self.contract_tree = contractTree(self.main_window, self.manager.contract_tuple_list)
+        self.contract_tree = ContractTree(self.main_window, self.manager.contract_tuple_list)
         self.contract_tree.on_update()
         vbox.addWidget(self.contract_tree)
         hbox = QHBoxLayout()

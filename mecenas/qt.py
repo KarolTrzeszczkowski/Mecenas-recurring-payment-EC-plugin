@@ -1,9 +1,10 @@
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from PyQt5 import QtGui
+from PyQt5 import QtCore
 import electroncash.version
 from electroncash.i18n import _
 from electroncash.plugins import BasePlugin, hook
+from electroncash_gui.qt.util import destroyed_print_error
+from electroncash.util import finalization_print_error
 
 
 class Plugin(BasePlugin):
@@ -17,18 +18,15 @@ class Plugin(BasePlugin):
         self.wallet_windows = {}
         self.mecenas_tabs = {}
         self.mecenas_tab= {}
+
     def fullname(self):
         return 'Mecenas'
 
+    def diagnostic_name(self):
+        return "Mecenas"
+
     def description(self):
         return _("Mecenas Plugin")
-
-    def is_available(self):
-        if self.is_version_compatible is None:
-            version = float(electroncash.version.PACKAGE_VERSION)
-            self.is_version_compatible = version >= MINIMUM_ELECTRON_CASH_VERSION
-        return True
-
 
     def on_close(self):
         """
@@ -77,6 +75,14 @@ class Plugin(BasePlugin):
         del self.wallet_windows[wallet_name]
         self.remove_ui_for_wallet(wallet_name, window)
 
+    @staticmethod
+    def _get_icon() -> QtGui.QIcon:
+        if QtCore.QFile.exists(":icons/preferences.png"):
+            icon = QtGui.QIcon(":icons/preferences.png")
+        else:
+            # png not found, must be new EC; try new EC icon -- svg
+            icon = QtGui.QIcon(":icons/preferences.svg")
+        return icon
 
     def add_ui_for_wallet(self, wallet_name, window):
         from .ui import Intro
@@ -84,31 +90,51 @@ class Plugin(BasePlugin):
         tab = window.create_list_tab(l)
         self.mecenas_tabs[wallet_name] = tab
         self.mecenas_tab[wallet_name] = l
-        window.tabs.addTab(tab, QIcon(":icons/preferences.png"), _('Mecenas'))
+        window.tabs.addTab(tab, self._get_icon(), _('Mecenas'))
 
     def remove_ui_for_wallet(self, wallet_name, window):
         wallet_tab = self.mecenas_tabs.get(wallet_name, None)
+        widget = self.mecenas_tab.get(wallet_name)
         if wallet_tab is not None:
+            if widget and callable(getattr(widget, 'kill_join', None)):
+                widget.kill_join()  # kill thread, wait for up to 2.5 seconds for it to exit
+            if widget and callable(getattr(widget, 'clean_up', None)):
+                widget.clean_up()  # clean up wallet and stop its threads
             del self.mecenas_tab[wallet_name]
             del self.mecenas_tabs[wallet_name]
-            i = window.tabs.indexOf(wallet_tab)
-            window.tabs.removeTab(i)
+            if wallet_tab:
+                i = window.tabs.indexOf(wallet_tab)
+                window.tabs.removeTab(i)
+                wallet_tab.deleteLater()
+                self.print_error("Removed UI for", wallet_name)
 
 
     def refresh_ui_for_wallet(self, wallet_name):
-        wallet_tab = self.mecenas_tabs[wallet_name]
-        wallet_tab.update()
+        wallet_tab = self.mecenas_tabs.get(wallet_name)
+        if wallet_tab:
+            wallet_tab.update()
+        wallet_tab = self.mecenas_tab.get(wallet_name)
+        if wallet_tab:
+            wallet_tab.update()
 
     def switch_to(self, mode, wallet_name, password, manager):
         window=self.wallet_windows[wallet_name]
         try:
             l = mode(window, self, wallet_name, password=password, manager=manager)
             tab = window.create_list_tab(l)
-            i = window.tabs.indexOf(self.mecenas_tabs.get(wallet_name, None))
+            destroyed_print_error(tab)  # track object lifecycle
+            finalization_print_error(tab)  # track object lifecycle
+
+            old_tab = self.mecenas_tabs.get(wallet_name, None)
+            i = window.tabs.indexOf(old_tab)
 
             self.mecenas_tabs[wallet_name] = tab
             self.mecenas_tab[wallet_name] = l
-            window.tabs.addTab(tab, QIcon(":icons/preferences.png"), _('Mecenas'))
-            window.tabs.removeTab(i)
-        except:
+            window.tabs.addTab(tab, self._get_icon(), _('Mecenas'))
+            if old_tab:
+                window.tabs.removeTab(i)
+                old_tab.searchable_list.deleteLater()
+                old_tab.deleteLater()
+        except Exception as e:
+            self.print_error(repr(e))
             return
