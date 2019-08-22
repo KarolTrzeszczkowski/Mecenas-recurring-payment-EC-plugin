@@ -1,4 +1,4 @@
-contract LastWill(Ripemd160 pkh, Ripemd160 pkh2, int pledge) {
+contract Mecenas(Ripemd160 pkh, Ripemd160 pkh2, int pledge) {
     challenge protege(PubKey pk, Sig sig, bin ver, bin hPhSo, bin scriptCode, bin value, bin nSequence, bin hashOutput, bin tail ) {
         verify size(ver) == 4;
         verify size(hPhSo) == 100;

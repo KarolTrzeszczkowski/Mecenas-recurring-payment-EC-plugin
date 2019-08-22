@@ -61,7 +61,7 @@ def get_contract_info(outputs):
             data =[int(e) for e in o[1].to_ui_string().split("'")[5].split(' ')]
             print("Data: ")
             print(data)
-            assert 0 <= version <= 1
+            assert 0 <= version <= 2 
             return Address.from_string(a).to_ui_string(), version, data
         except:
             continue

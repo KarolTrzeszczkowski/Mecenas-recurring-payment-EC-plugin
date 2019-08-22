@@ -114,6 +114,7 @@ class Create(QDialog, MessageBoxMixin):
         self.config = parent.config
         self.password=None
         self.contract=None
+        self.version=1
         if self.wallet.has_password():
             self.main_window.show_error(_(
                 "Plugin requires password. It will get access to your private keys."))
@@ -184,6 +185,9 @@ class Create(QDialog, MessageBoxMixin):
         grid.addWidget(self.rpayment_value_wid,3,0)
         grid.addWidget(self.rpayment_time_wid,3,1)
 
+        self.no_opt_out_check = QCheckBox("Mecenas can end the contract only if protege is inactive for a month.")
+        self.no_opt_out_check.stateChanged.connect(self.mecenate_info_changed)
+        vbox.addWidget(self.no_opt_out_check)
         b = QPushButton(_("Create Mecenas Contract"))
         b.clicked.connect(lambda: self.create_mecenat())
         vbox.addStretch(1)
@@ -200,13 +204,14 @@ class Create(QDialog, MessageBoxMixin):
             self.total_value = self.total_value_wid.get_amount()
             self.rpayment_time = int(self.rpayment_time_wid.text())*3600*24//512
             self.rpayment_value = self.rpayment_value_wid.get_amount()
+            self.version = 2 if self.no_opt_out_check.isChecked() else 1
         except:
             self.create_button.setDisabled(True)
         else:
             self.create_button.setDisabled(False)
             # PROTEGE is 0, MECENAS is 1
             addresses = [self.protege_address, self.mecenas_address]
-            self.contract = MecenasContract(addresses, v=1,data=[self.rpayment_time, self.rpayment_value])
+            self.contract = MecenasContract(addresses, v=self.version, data=[self.rpayment_time, self.rpayment_value])
 
 
 
