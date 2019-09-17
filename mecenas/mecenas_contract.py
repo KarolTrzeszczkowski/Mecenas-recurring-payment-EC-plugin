@@ -12,6 +12,7 @@ PLEDGE_TIME=int((0*3600*24))#0.083
 PLEDGE = 1000
 PROTEGE = 0
 MECENAS = 1
+ESCROW = 2
 MONTH=5062
 
 
@@ -57,24 +58,8 @@ class MecenasContract:
         assert len(self.i_time_bytes) == 2
         assert len(self.rpayment_bytes) < 76 # Better safe than sorry
         
-        ## version with locktime for mecenas
-        self.redeemscript_v2 = joinbytes([
-            len(addresses[0].hash160), addresses[0].hash160,
-            len(addresses[1].hash160), addresses[1].hash160,
-            len(self.rpayment_bytes), self.rpayment_bytes,
-            Op.OP_3, Op.OP_PICK, Op.OP_TRUE, Op.OP_EQUAL, 
-            Op.OP_IF,
-	        Op.OP_10, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, Op.OP_4, Op.OP_EQUALVERIFY, Op.OP_9, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, 1,100, Op.OP_EQUALVERIFY, Op.OP_7, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, Op.OP_8, Op.OP_EQUALVERIFY, Op.OP_6, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, Op.OP_4, Op.OP_EQUALVERIFY, Op.OP_5, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, 1,32, Op.OP_EQUALVERIFY, Op.OP_4, Op.OP_PICK, Op.OP_SIZE, Op.OP_NIP, Op.OP_8, Op.OP_EQUALVERIFY, Op.OP_11, Op.OP_PICK, Op.OP_13, Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_10, Op.OP_PICK, Op.OP_10, Op.OP_PICK, Op.OP_CAT, Op.OP_9, Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_12, Op.OP_PICK, Op.OP_SIZE, Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_OVER, Op.OP_SHA256, Op.OP_15, Op.OP_PICK, Op.OP_CHECKDATASIGVERIFY, 2,232,3, Op.OP_2, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_10, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_4, Op.OP_PICK, Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN, 1,118, 1,135, 1,169, 1,20, 1,23, 1,25, 1,136, 1,172, 1,20, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT, Op.OP_NIP, 3, self.i_time_bytes, 64, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, 1,23, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_2, Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_OVER, Op.OP_HASH160, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_10, Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, 1,17, Op.OP_PICK, Op.OP_CAT, Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3, Op.OP_PICK, Op.OP_CAT, Op.OP_2DUP, Op.OP_CAT, Op.OP_HASH256, 1,21, Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, 
-            Op.OP_ELSE,
-	        Op.OP_3, Op.OP_PICK, Op.OP_2, Op.OP_EQUAL, 
-                Op.OP_IF,
-	        3, self.i_time_bytes_mec, 64, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, Op.OP_5, Op.OP_PICK, Op.OP_HASH160, Op.OP_2, Op.OP_PICK, Op.OP_EQUALVERIFY, Op.OP_4, Op.OP_PICK, Op.OP_6, Op.OP_PICK, Op.OP_CHECKSIG, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, 
-                Op.OP_ELSE,
-	            Op.OP_FALSE, 
-                Op.OP_ENDIF, 
-            Op.OP_ENDIF            
-            ])
-        ## script version without p2pkh part in protege challenge, version 1 of the script?
+
+        ## Legacy version of Mecenas script
         self.redeemscript_v1 = joinbytes([
             len(addresses[0].hash160), addresses[0].hash160,
             len(addresses[1].hash160), addresses[1].hash160,
@@ -113,7 +98,133 @@ class MecenasContract:
             Op.OP_ENDIF
 
         ])
-        self.redeemscript=self.redeemscript_v1 
+
+        # Current version of Mecenas script
+        self.redeemscript_v1_1 = joinbytes([
+            len(addresses[0].hash160), addresses[0].hash160,
+            len(addresses[1].hash160), addresses[1].hash160,
+            len(addresses[2].hash160), addresses[2].hash160,
+            len(self.rpayment_bytes), self.rpayment_bytes,
+            3, self.i_time_bytes, 64,
+            Op.OP_4, Op.OP_PICK, Op.OP_TRUE, Op.OP_EQUAL,
+            Op.OP_IF,
+                Op.OP_5, Op.OP_PICK, Op.OP_4, Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_DROP, Op.OP_6, Op.OP_PICK, Op.OP_DUP,
+                Op.OP_SIZE, Op.OP_NIP, 1, 40, Op.OP_SUB, Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, 1, 32, Op.OP_SPLIT,
+                Op.OP_SPLIT, Op.OP_DROP, Op.OP_8, Op.OP_PICK, Op.OP_DUP, Op.OP_SIZE, Op.OP_NIP, 1, 44, Op.OP_SUB,
+                Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_DROP, Op.OP_DUP, 1, 104, Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP,
+                Op.OP_OVER, Op.OP_SIZE, Op.OP_NIP, Op.OP_8, Op.OP_SUB, Op.OP_SPLIT, Op.OP_13, Op.OP_PICK, Op.OP_15,
+                Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_13, Op.OP_PICK, Op.OP_SIZE, Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP,
+                Op.OP_13, Op.OP_PICK, Op.OP_SHA256, Op.OP_16, Op.OP_PICK, Op.OP_CHECKDATASIGVERIFY, 2, 232, 3, Op.OP_9,
+                Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_11, Op.OP_PICK, Op.OP_SUB,
+                Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN, 1, 118, 1, 135, 1, 169, 1, 20, 1, 23, 1, 25, 1, 136,
+                1, 172, Op.OP_12, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT, Op.OP_NIP, 1, 19, Op.OP_PICK, Op.OP_CHECKSEQUENCEVERIFY,
+                Op.OP_DROP, 1, 18, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_2, Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_9,
+                Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT,
+                Op.OP_OVER, Op.OP_HASH160, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5,
+                Op.OP_PICK, Op.OP_CAT, Op.OP_10, Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK,
+                Op.OP_CAT, 1, 24, Op.OP_PICK, Op.OP_CAT, Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3, Op.OP_PICK, Op.OP_CAT,
+                Op.OP_2DUP, Op.OP_CAT, Op.OP_HASH256, 1, 19, Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+            Op.OP_ELSE,
+                Op.OP_4, Op.OP_PICK, Op.OP_2, Op.OP_EQUAL,
+                Op.OP_IF,
+                    Op.OP_6, Op.OP_PICK, Op.OP_HASH160, Op.OP_3, Op.OP_PICK, Op.OP_EQUALVERIFY, Op.OP_5, Op.OP_PICK, Op.OP_7,
+                    Op.OP_PICK, Op.OP_CHECKSIG, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                Op.OP_ELSE,
+                    Op.OP_FALSE,
+                Op.OP_ENDIF,
+            Op.OP_ENDIF
+
+        ])
+        ## version with locktime for mecenas
+        self.redeemscript_v2 = joinbytes([
+            len(addresses[0].hash160), addresses[0].hash160,
+            len(addresses[1].hash160), addresses[1].hash160,
+            len(self.rpayment_bytes), self.rpayment_bytes,
+            3, self.i_time_bytes, 64,
+            3, self.i_time_bytes_mec, 64,
+            Op.OP_5, Op.OP_PICK, Op.OP_TRUE, Op.OP_EQUAL,
+            Op.OP_IF,
+            Op.OP_6, Op.OP_PICK, Op.OP_4, Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_DROP, Op.OP_7, Op.OP_PICK, Op.OP_DUP,
+            Op.OP_SIZE, Op.OP_NIP, 1, 40, Op.OP_SUB, Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, 1, 32, Op.OP_SPLIT,
+            Op.OP_SPLIT, Op.OP_DROP, Op.OP_9, Op.OP_PICK, Op.OP_DUP, Op.OP_SIZE, Op.OP_NIP, 1, 44, Op.OP_SUB,
+            Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_DROP, Op.OP_DUP, 1, 104, Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP,
+            Op.OP_OVER, Op.OP_SIZE, Op.OP_NIP, Op.OP_8, Op.OP_SUB, Op.OP_SPLIT, Op.OP_14, Op.OP_PICK, Op.OP_16,
+            Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_14, Op.OP_PICK, Op.OP_SIZE, Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP,
+            Op.OP_14, Op.OP_PICK, Op.OP_SHA256, 1, 17, Op.OP_PICK, Op.OP_CHECKDATASIGVERIFY, 2, 232, 3, Op.OP_10,
+            Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_12, Op.OP_PICK, Op.OP_SUB,
+            Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN, 1, 118, 1, 135, 1, 169, 1, 20, 1, 23, 1, 25, 1, 136,
+            1, 172, Op.OP_12, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT, Op.OP_NIP, 1, 20, Op.OP_PICK, Op.OP_CHECKSEQUENCEVERIFY,
+            Op.OP_DROP, 1, 18, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_2, Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_9,
+            Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT,
+            Op.OP_OVER, Op.OP_HASH160, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5,
+            Op.OP_PICK, Op.OP_CAT, Op.OP_10, Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK,
+            Op.OP_CAT, 1, 25, Op.OP_PICK, Op.OP_CAT, Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3, Op.OP_PICK, Op.OP_CAT,
+            Op.OP_2DUP, Op.OP_CAT, Op.OP_HASH256, 1, 19, Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+            Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+            Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+            Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+            Op.OP_ELSE,
+            Op.OP_5, Op.OP_PICK, Op.OP_2, Op.OP_EQUAL,
+            Op.OP_IF,
+            Op.OP_DUP, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, Op.OP_7, Op.OP_PICK, Op.OP_HASH160, Op.OP_4, Op.OP_PICK,
+            Op.OP_EQUALVERIFY, Op.OP_6, Op.OP_PICK, Op.OP_8, Op.OP_PICK, Op.OP_CHECKSIG, Op.OP_NIP, Op.OP_NIP,
+            Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+            Op.OP_ELSE,
+            Op.OP_FALSE, Op.OP_ENDIF, Op.OP_ENDIF
+
+        ])
+        ## Escrow version of Mecenas
+        if len(addresses)==3:
+            self.redeemscript_v3 = joinbytes([
+                len(addresses[0].hash160), addresses[0].hash160,
+                len(addresses[1].hash160), addresses[1].hash160,
+                len(addresses[2].hash160), addresses[2].hash160,
+                len(self.rpayment_bytes), self.rpayment_bytes,
+                3, self.i_time_bytes, 64,
+                Op.OP_5, Op.OP_PICK, Op.OP_TRUE, Op.OP_EQUAL,
+                Op.OP_IF,
+                    Op.OP_6, Op.OP_PICK, Op.OP_4, Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_DROP, Op.OP_7, Op.OP_PICK, Op.OP_DUP,
+                    Op.OP_SIZE, Op.OP_NIP, 1, 40, Op.OP_SUB, Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, 1, 32,
+                    Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_DROP, Op.OP_9, Op.OP_PICK, Op.OP_DUP, Op.OP_SIZE, Op.OP_NIP, 1, 44,
+                    Op.OP_SUB, Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_DROP, Op.OP_DUP, 1, 104, Op.OP_SPLIT, Op.OP_SPLIT, Op.OP_NIP,
+                    Op.OP_DUP, Op.OP_OVER, Op.OP_SIZE, Op.OP_NIP, Op.OP_8, Op.OP_SUB, Op.OP_SPLIT, Op.OP_14, Op.OP_PICK,
+                    Op.OP_16, Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_14, Op.OP_PICK, Op.OP_SIZE, Op.OP_1SUB, Op.OP_SPLIT,
+                    Op.OP_DROP, Op.OP_14, Op.OP_PICK, Op.OP_SHA256, 1, 17, Op.OP_PICK, Op.OP_CHECKDATASIGVERIFY, 2, 232, 3,
+                    Op.OP_9, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_11, Op.OP_PICK,
+                    Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN, 1, 118, 1, 135, 1, 169, 1, 20, 1, 23,
+                    1, 25, 1, 136, 1, 172, Op.OP_12, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT, Op.OP_NIP, 1, 19, Op.OP_PICK,
+                    Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, 1, 18, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_2,
+                    Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_7,
+                    Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_OVER, Op.OP_HASH160, Op.OP_CAT, Op.OP_8,
+                    Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_10, Op.OP_PICK,
+                    Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, 1, 25, Op.OP_PICK, Op.OP_CAT,
+                    Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3, Op.OP_PICK, Op.OP_CAT, Op.OP_2DUP, Op.OP_CAT, Op.OP_HASH256, 1,
+                    19, Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                    Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                    Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                    Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                Op.OP_ELSE,
+                    Op.OP_5, Op.OP_PICK, Op.OP_2, Op.OP_EQUAL,
+                    Op.OP_IF,
+                        Op.OP_9, Op.OP_PICK, Op.OP_HASH160, Op.OP_5, Op.OP_PICK, Op.OP_EQUAL, Op.OP_10, Op.OP_PICK,
+                        Op.OP_HASH160, Op.OP_5, Op.OP_PICK, Op.OP_EQUAL, Op.OP_BOOLOR, Op.OP_VERIFY, Op.OP_8, Op.OP_PICK,
+                        Op.OP_HASH160, Op.OP_3, Op.OP_PICK, Op.OP_EQUAL, Op.OP_9, Op.OP_PICK, Op.OP_HASH160, Op.OP_5,
+                        Op.OP_PICK, Op.OP_EQUAL, Op.OP_BOOLOR, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_9, Op.OP_PICK,
+                        Op.OP_EQUAL, Op.OP_NOT, Op.OP_VERIFY, Op.OP_FALSE, Op.OP_7, Op.OP_PICK, Op.OP_7, Op.OP_PICK, Op.OP_2,
+                        Op.OP_11, Op.OP_PICK, Op.OP_11, Op.OP_PICK, Op.OP_2, Op.OP_CHECKMULTISIG, Op.OP_NIP, Op.OP_NIP,
+                        Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                    Op.OP_ELSE,
+                        Op.OP_FALSE,
+                    Op.OP_ENDIF,
+                Op.OP_ENDIF
+
+            ])
+
+
+        self.redeemscript=self.redeemscript_v1
         self.set_version(v)
         self.address = Address.from_multisig_script(self.redeemscript)
         data1 = self.address.to_ui_string() + ' ' + str(self.version)
@@ -125,12 +236,21 @@ class MecenasContract:
 
 
     def set_version(self, v):
-        if v == 2:
+        if v == 1:
+            self.version = 1
+            self.redeemscript = self.redeemscript_v1
+        elif v == 1.1:
+            self.version = 1.1
+            self.redeemscript = self.redeemscript_v1_1
+        elif v == 2:
             self.version = 2
-            self.redeemscript=self.redeemscript_v2
+            self.redeemscript = self.redeemscript_v2
+        elif v == 3:
+            self.version = 3
+            self.redeemscript = self.redeemscript_v2
         else:
             self.version = 1
-            self.redeemscript=self.redeemscript_v1
+            self.redeemscript = self.redeemscript_v1
             
 
 class ContractManager:
@@ -147,6 +267,7 @@ class ContractManager:
         self.wallet = wallet
         self.rpayment = self.contract.rpayment
         self.dummy_scriptsig = '00'*(110 + len(self.contract.redeemscript))
+        self.version = self.contract.version
 
         if self.mode == PROTEGE:
             self.sequence=2**22+self.contract.i_time
@@ -163,6 +284,7 @@ class ContractManager:
         self.contract_index = self.contract_tuple_list.index(contract_tuple)
         self.rpayment = self.contract.rpayment
         self.mode = m
+        self.version = contract_tuple[CONTRACT].version
         if self.mode == PROTEGE:
             self.sequence=2**22+self.contract.i_time
         elif self.mode == MECENAS and self.contract.version == 2:
@@ -209,8 +331,34 @@ class ContractManager:
         tx.sign(self.keypair)
 
 
-
     def completetx(self, tx):
+        """
+        Completes transaction by creating scriptSig. You need to sign the
+        transaction before using this (see `signtx`).
+        This works on multiple utxos if needed.
+        """
+        pub = bytes.fromhex(self.pubkeys[self.contract_index][self.mode])
+        for txin in tx.inputs():
+            # find matching inputs
+            if txin['address'] != self.contract.address:
+                continue
+            sig = txin['signatures'][0]
+            if not sig:
+                continue
+            sig = bytes.fromhex(sig)
+            if txin['scriptSig'] == self.dummy_scriptsig:
+                script = [
+                    len(pub), pub,
+                    len(sig), sig,
+                    Op.OP_2, 77, len(self.contract.redeemscript).to_bytes(2, 'little'), self.contract.redeemscript,
+                    ]
+                print("scriptSig length " + str(joinbytes(script).hex().__sizeof__()))
+                txin['scriptSig'] = joinbytes(script).hex()
+        # need to update the raw, otherwise weird stuff happens.
+        tx.raw = tx.serialize()
+
+
+    def completetx_multisig(self, tx):
         """
         Completes transaction by creating scriptSig. You need to sign the
         transaction before using this (see `signtx`).
@@ -277,6 +425,34 @@ class ContractManager:
                 txin['scriptSig'] = joinbytes(script).hex()
         # need to update the raw, otherwise weird stuff happens.
         tx.raw = tx.serialize()
+
+
+    def complete_covenant(self, tx):
+        pub = bytes.fromhex(self.public[0])
+
+        for i, txin in enumerate(tx.inputs()):
+            # find matching inputs
+            if txin['address'] != self.contract.address:
+                continue
+            preimage=bytes.fromhex(tx.serialize_preimage(i))
+            sig = txin['signatures'][0]
+            if not sig:
+                continue
+            sig = bytes.fromhex(sig)
+            print("Signature size:" + str(len(sig)))
+            if txin['scriptSig'] == self.dummy_scriptsig:
+                self.checkd_data_sig(sig,preimage,self.public[0])
+                script = [
+                    len(pub), pub,
+                    len(sig), sig,
+                    77, len(preimage).to_bytes(2, byteorder='little'), preimage,
+                    Op.OP_1, 77, len(self.contract.redeemscript).to_bytes(2,'little'), self.contract.redeemscript,
+                    ]
+                print("scriptSig length "+ str(joinbytes(script).hex().__sizeof__()))
+            txin['scriptSig'] = joinbytes(script).hex()
+        # need to update the raw, otherwise weird stuff happens.
+        tx.raw = tx.serialize()
+
 
     def checkd_data_sig(self,sig,pre,pk):
         sec, compressed = self.keypair.get(pk)

@@ -14,7 +14,7 @@ from electroncash.wallet import Multisig_Wallet
 from electroncash.util import NotEnoughFunds
 from electroncash_gui.qt.transaction_dialog import show_transaction
 from .contract_finder import find_contract
-from .mecenas_contract import ContractManager, UTXO, CONTRACT, MODE, PROTEGE, MECENAS
+from .mecenas_contract import ContractManager, UTXO, CONTRACT, MODE, PROTEGE, MECENAS, ESCROW
 from .util import *
 from math import ceil
 
@@ -423,12 +423,22 @@ class Manage(QDialog, MessageBoxMixin):
         show_transaction(tx, self.main_window, "Pledge", prompt_if_unsaved=True)
         self.plugin.switch_to(Manage, self.wallet_name, None, None)
 
-
+    def save(self, tx):
+        name = 'signed_%s.txn' % (tx.txid()[0:8]) if tx.is_complete() else 'unsigned.txn'
+        fileName = self.main_window.getSaveFileName(_("Select where to save your signed transaction"), name, "*.txn")
+        if fileName:
+            tx_dict = tx.as_dict()
+            with open(fileName, "w+", encoding='utf-8') as f:
+                f.write(json.dumps(tx_dict, indent=4) + '\n')
+            self.show_message(_("Transaction saved successfully"))
+            self.saved = True
 
 def role_name(i):
     if i == PROTEGE:
         return "Protege"
     elif i == MECENAS:
         return "Mecenas"
+    elif i == ESCROW:
+        return "Escrow"
     else:
         return "unknown role"
