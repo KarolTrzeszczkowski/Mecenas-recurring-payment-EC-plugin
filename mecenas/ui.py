@@ -13,7 +13,7 @@ from electroncash_gui.qt.util import *
 from electroncash.wallet import Multisig_Wallet
 from electroncash.util import NotEnoughFunds
 from electroncash_gui.qt.transaction_dialog import show_transaction
-from .contract_finder import find_contract
+from .contract_finder1 import find_contract_in_wallet
 from .mecenas_contract import ContractManager, UTXO, CONTRACT, MODE, PROTEGE, MECENAS, ESCROW
 from .util import *
 from math import ceil
@@ -53,7 +53,7 @@ class Intro(QDialog, MessageBoxMixin):
         vbox.addStretch(1)
 
     def handle_finding(self):
-        self.contract_tuple_list = find_contract(self.wallet)
+        self.contract_tuple_list = find_contract_in_wallet(self.wallet, MecenasContract)
         if len(self.contract_tuple_list):
             self.start_manager()
         else:
@@ -102,6 +102,48 @@ class Intro(QDialog, MessageBoxMixin):
                     print(ex)
         return keypairs, public_keys
 
+class AdvancedWid(QWidget):
+    toggle_sig = pyqtSignal()
+    def __init__(self, parent):
+        QWidget.__init__(self, parent)
+        vbox = QVBoxLayout(self)
+        hbox = QHBoxLayout()
+        l = QLabel("<b> %s </b>" % "Advanced options")
+        vbox.addWidget(l)
+        self.nothing = QRadioButton("No aditional options")
+        self.nothing.option = 1
+        self.nothing.setChecked(True)
+        self.nothing.toggled.connect(self.onClick)
+        vbox.addWidget(self.nothing)
+        self.escrow_address = QLineEdit()
+        self.escrow_address.setPlaceholderText("Escrow bchaddress")
+        self.no_opt_out_check = QRadioButton("Mecenas can end the contract only if protege is inactive for a month.")
+        self.no_opt_out_check.option = 2
+        self.no_opt_out_check.toggled.connect(self.onClick)
+        vbox.addWidget(self.no_opt_out_check)
+        self.esc_check = QRadioButton("Add escrow:")
+        self.esc_check.option = 3
+        self.esc_check.toggled.connect(self.onClick)
+        self.escrow_address.setDisabled(True)
+        self.escrow_address.textEdited.connect(self.toggle_sig.emit)
+        vbox.addWidget(self.no_opt_out_check)
+        self.legacy = QRadioButton("Legacy version")
+        self.legacy.option = 4
+        self.legacy.toggled.connect(self.onClick)
+        vbox.addLayout(hbox)
+        hbox.addWidget(self.esc_check)
+        hbox.addWidget(self.escrow_address)
+        vbox.addWidget(self.legacy)
+        self.option = 1
+
+    def onClick(self):
+        radio = self.sender()
+        self.option = radio.option
+        self.escrow_address.setDisabled(not self.esc_check.isChecked())
+        self.toggle_sig.emit()
+
+
+
 
 class Create(QDialog, MessageBoxMixin):
 
@@ -126,7 +168,8 @@ class Create(QDialog, MessageBoxMixin):
         self.fund_change_address = None
         self.mecenas_address = self.wallet.get_unused_address()
         self.protege_address=None
-        self.cold_address=None
+        self.escrow_address=None
+        self.addresses=[]
         self.total_value=0
         self.rpayment_value=0
         self.rpayment_time=0
@@ -185,11 +228,11 @@ class Create(QDialog, MessageBoxMixin):
         grid.addWidget(self.rpayment_value_wid,3,0)
         grid.addWidget(self.rpayment_time_wid,3,1)
 
-        self.no_opt_out_check = QCheckBox("Mecenas can end the contract only if protege is inactive for a month.")
-        self.no_opt_out_check.stateChanged.connect(self.mecenate_info_changed)
-        vbox.addWidget(self.no_opt_out_check)
+        self.advanced_wid = AdvancedWid(self)
+        self.advanced_wid.toggle_sig.connect(self.mecenate_info_changed)
+        vbox.addWidget(self.advanced_wid)
         b = QPushButton(_("Create Mecenas Contract"))
-        b.clicked.connect(lambda: self.create_mecenat())
+        b.clicked.connect(self.create_mecenat)
         vbox.addStretch(1)
         vbox.addWidget(b)
         self.create_button = b
@@ -204,15 +247,35 @@ class Create(QDialog, MessageBoxMixin):
             self.total_value = self.total_value_wid.get_amount()
             self.rpayment_time = int(self.rpayment_time_wid.text())*3600*24//512
             self.rpayment_value = self.rpayment_value_wid.get_amount()
-            self.version = 2 if self.no_opt_out_check.isChecked() else 1
+            if self.advanced_wid.option == 2:
+                self.version = 2
+                self.addresses = [self.protege_address, self.mecenas_address]
+            elif self.advanced_wid.option == 3:
+                self.version = 3
+                self.escrow_address = Address.from_string(self.advanced_wid.escrow_address.text())
+                self.addresses = [self.protege_address, self.mecenas_address, self.escrow_address]
+            elif self.advanced_wid.option == 1:
+                self.version = 1.1
+                self.addresses = [self.protege_address, self.mecenas_address]
+            elif self.advanced_wid.option == 4:
+                self.version = 1
+                self.addresses = [self.protege_address, self.mecenas_address]
         except:
             self.create_button.setDisabled(True)
         else:
             self.create_button.setDisabled(False)
             # PROTEGE is 0, MECENAS is 1
-            addresses = [self.protege_address, self.mecenas_address]
-            self.contract = MecenasContract(addresses, v=self.version, data=[self.rpayment_time, self.rpayment_value])
+            self.contract = MecenasContract(self.addresses, v=self.version, data=[self.rpayment_time, self.rpayment_value])
 
+    def build_otputs(self):
+        outputs = []
+        # convention used everywhere else in this plugin is is 0 for protege and 1 for mecenas
+        # but I did it upside down here by mistake
+        outputs.append((TYPE_SCRIPT, ScriptOutput(self.contract.op_return),0))
+        for a in self.addresses:
+            outputs.append((TYPE_ADDRESS, a, 546))
+        outputs.append((TYPE_ADDRESS, self.contract.address, self.total_value))
+        return outputs
 
 
     def create_mecenat(self, ):
@@ -220,12 +283,7 @@ class Create(QDialog, MessageBoxMixin):
             "Do you wish to create the Mecenas Contract?"))
         if not yorn:
             return
-        # convention used everywhere else in this plugin is is 0 for protege and 1 for mecenas
-        # but I did it upside down here by mistake
-        outputs = [(TYPE_SCRIPT, ScriptOutput(self.contract.op_return),0),
-                   (TYPE_ADDRESS, self.mecenas_address, 546),
-                   (TYPE_ADDRESS, self.protege_address, 546),
-                   (TYPE_ADDRESS, self.contract.address, self.total_value)]
+        outputs = self.build_otputs()
         try:
             tx = self.wallet.mktx(outputs, self.password, self.config,
                                   domain=self.fund_domain, change_addr=self.fund_change_address)
@@ -321,8 +379,6 @@ class ContractTree(MessageBoxMixin, PrintError, MyTreeWidget):
         txHeight = entry.get("height")
         age = self.get_age(entry)
         contract_i_time=ceil((ctuple[CONTRACT].i_time * 512) / (3600))
-        print("age, contract itime")
-        print(age, contract_i_time)
         if txHeight==0 :
             label = _("Waiting for confirmation.")
         elif (contract_i_time-age) >= 0:
@@ -343,6 +399,7 @@ class Manage(QDialog, MessageBoxMixin):
         self.plugin = plugin
         self.wallet_name = wallet_name
         self.config = parent.config
+        self.complete = None
         self.manager=manager
         vbox = QVBoxLayout()
         self.setLayout(vbox)
@@ -359,34 +416,35 @@ class Manage(QDialog, MessageBoxMixin):
         b = QPushButton(_("Create new Mecenas Contract"))
         b.clicked.connect(lambda: self.plugin.switch_to(Create, self.wallet_name, None, self.manager))
         hbox.addWidget(b)
-        self.take_pledge_label = _("Take payment from pledge")
-        self.end_label = _("End")
         vbox.addStretch(1)
-        self.button = QPushButton("lol")
-        self.button.clicked.connect(lambda : print("lol")) # disconnect() throws an error if there is nothing connected
-        vbox.addWidget(self.button)
-        self.contract_tree.currentItemChanged.connect(self.update_button)
-        self.update_button()
+        self.end_button = QPushButton( _("End"))
+        self.end_button.clicked.connect(self.end)
+        self.pledge_button = QPushButton(_("Take payment from pledge"))
+        self.pledge_button.clicked.connect(self.pledge)
+        hbox = QHBoxLayout()
+        vbox.addLayout(hbox)
+        hbox.addWidget(self.end_button)
+        hbox.addWidget(self.pledge_button)
+        self.contract_tree.currentItemChanged.connect(self.update_buttons)
+        self.update_buttons()
 
 
-
-    def update_button(self):
+    def update_buttons(self):
         contract, utxo_index, m = self.contract_tree.get_selected_id()
         self.manager.choice(contract, utxo_index, m)
-        if m == PROTEGE:
-            self.button.setText(self.take_pledge_label)
-            self.button.clicked.disconnect()
-            self.button.clicked.connect(self.pledge)
-        else:
-            self.button.setText(self.end_label)
-            self.button.clicked.disconnect()
-            self.button.clicked.connect(self.end)
-
+        self.end_button.setDisabled(False)
+        self.pledge_button.setDisabled(False)
+        if m == PROTEGE and self.manager.version != 3:
+            self.end_button.setDisabled(True)
+        if m == MECENAS or m == ESCROW:
+            self.pledge_button.setDisabled(True)
 
 
     def end(self):
         print("end")
+        self.complete = self.manager.complete_method("end")
         inputs = self.manager.txin
+
         # Mark style fee estimation
         outputs = [
             (TYPE_ADDRESS, self.manager.contract.addresses[self.manager.mode], self.manager.value)]
@@ -402,12 +460,12 @@ class Manage(QDialog, MessageBoxMixin):
         tx.version = 2
         if not self.wallet.is_watching_only():
             self.manager.signtx(tx)
-            self.manager.completetx(tx)
+            self.complete(tx)
         show_transaction(tx, self.main_window, "End Mecenas Contract", prompt_if_unsaved=True)
         self.plugin.switch_to(Manage, self.wallet_name, None, None)
 
     def pledge(self):
-        print("pledge")
+        self.complete = self.manager.complete_method()
         inputs = self.manager.txin
         # Mark style fee estimation
         outputs = [
@@ -419,7 +477,7 @@ class Manage(QDialog, MessageBoxMixin):
         #print(tx.outputs())
         if not self.wallet.is_watching_only():
             self.manager.signtx(tx)
-            self.manager.completetx_ref(tx)
+            self.complete(tx)
         show_transaction(tx, self.main_window, "Pledge", prompt_if_unsaved=True)
         self.plugin.switch_to(Manage, self.wallet_name, None, None)
 
