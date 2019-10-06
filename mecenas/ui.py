@@ -197,38 +197,53 @@ class Create(QDialog, MessageBoxMixin):
 
 
 
-        grid = QGridLayout()
-        vbox.addLayout(grid)
+
 
         l = QLabel(_("Protege address: "))
-        grid.addWidget(l, 0, 0)
+        vbox.addWidget(l)
 
-        l = QLabel(_("Total value"))
-        grid.addWidget(l, 0, 1)
+
 
         self.protege_address_wid = QLineEdit()
         self.protege_address_wid.textEdited.connect(self.mecenate_info_changed)
-        grid.addWidget(self.protege_address_wid, 1, 0)
+        vbox.addWidget(self.protege_address_wid)
 
-        self.total_value_wid = BTCAmountEdit(self.main_window.get_decimal_point)
-        self.total_value_wid.textEdited.connect(self.mecenate_info_changed)
-        grid.addWidget(self.total_value_wid, 1, 1)
+
+
+        grid = QGridLayout()
+        vbox.addLayout(grid)
+
         l = QLabel(_("Recurring payment value: "))
-        grid.addWidget(l, 2, 0)
+        grid.addWidget(l, 0, 0)
+        l = QLabel(_("Repetitions:"))
+        grid.addWidget(l, 0, 1)
 
         l = QLabel(_("Period (days): "))
-        grid.addWidget(l, 2, 1)
+        grid.addWidget(l, 0, 2)
 
         self.rpayment_value_wid = BTCAmountEdit(self.main_window.get_decimal_point)
         self.rpayment_value_wid.setAmount(1000000)
         self.rpayment_value_wid.textEdited.connect(self.mecenate_info_changed)
 
+        self.repetitions = QLineEdit()
+        self.repetitions.textEdited.connect(self.mecenate_info_changed)
+        grid.addWidget(self.repetitions, 1, 1)
+
         self.rpayment_time_wid = QLineEdit()
         self.rpayment_time_wid.setText("30")
         self.rpayment_time_wid.textEdited.connect(self.mecenate_info_changed)
-        grid.addWidget(self.rpayment_value_wid,3,0)
-        grid.addWidget(self.rpayment_time_wid,3,1)
-
+        grid.addWidget(self.rpayment_value_wid,1,0)
+        grid.addWidget(self.rpayment_time_wid,1,2)
+        grid.addWidget(QLabel("Total contract value:"),2,0)
+        self.total_label = QLabel("0")
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.total_label)
+        hbox.addStretch(1)
+        hbox.addWidget(QLabel("Total time:"))
+        #grid.addWidget(self.total_label,2,1)
+        grid.addLayout(hbox,2,1)
+        self.total_time_label = QLabel("0")
+        grid.addWidget(self.total_time_label,2,2)
         self.advanced_wid = AdvancedWid(self)
         self.advanced_wid.toggle_sig.connect(self.mecenate_info_changed)
         vbox.addWidget(self.advanced_wid)
@@ -245,9 +260,14 @@ class Create(QDialog, MessageBoxMixin):
             # if any of the txid/out#/value changes
         try:
             self.protege_address = Address.from_string(self.protege_address_wid.text())
-            self.total_value = self.total_value_wid.get_amount()
+            reps = int(self.repetitions.text())
             self.rpayment_time = int(self.rpayment_time_wid.text())*3600*24//512
             self.rpayment_value = self.rpayment_value_wid.get_amount()
+            self.total_value = reps*(self.rpayment_value + 1000)
+            total_time = int(self.rpayment_time_wid.text()) * reps
+            self.total_label.setText("<b>%s</b>" % (self.main_window.format_amount(self.total_value) + " " + self.main_window.base_unit()))
+            self.total_time_label.setText("<b>%s</b>" % (str(total_time) + " days" ))
+
             if self.advanced_wid.option == 2:
                 self.version = 2
                 self.addresses = [self.protege_address, self.mecenas_address]
@@ -280,6 +300,9 @@ class Create(QDialog, MessageBoxMixin):
 
 
     def create_mecenat(self, ):
+        if self.total_value >= 2100000000:
+            self.show_error("Contract total value shouldn't be larger than 21 BCH")
+            return
         yorn = self.main_window.question(_(
             "Do you wish to create the Mecenas Contract?"))
         if not yorn:
