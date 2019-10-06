@@ -1,0 +1,54 @@
+// Mecenas Contract, version 3.0 With Escrow
+//
+// This contract can be closed only by agreement of Mecenas and Protege
+// Or Protege and Escrow or Mecenas and Escrow. 
+// It uses 2-of-3 multisignature on p2pkh addresses scheme.
+
+
+contract Mecenas(Ripemd160 protegePkh, Ripemd160 mecenasPkh, Ripemd160 escrowPkh, int pledge, TimeSpan period) {
+
+    challenge refresh(PubKey pk, Sig sig, bin preimage){
+        
+        // preimage deserializaion
+        bin [ver, _] = preimage @ 4; // nVersion
+        bin [_, tail] = preimage @ (size(preimage) - 40); // hashOutput + nLocktime + sighash
+        bin [hashOutput, _] = tail @ 32;
+        bin [torso, _] =  preimage @ (size(preimage) - 44);
+        bin [_, belly] = torso @ 104;
+        bin [scriptCode, value] = belly @ (size(belly) - 8);
+
+        //verify hash160(pk) == pkh; // Anyone Can Execute
+        verify checkSig(sig, pk);
+        verify checkDataSig(toDataSig(sig), sha256(preimage), pk); 
+        int fee = 1000;
+        bin amount2 = num2bin(pledge, 8);
+        bin amount1 =num2bin(bin2num(value) - pledge - fee, 8);
+
+        bin opDup = 0x76;
+        bin opEqual = 0x87;
+        bin opHash160 = 0xa9;
+        bin pushHash = 0x14;
+        bin newVarInt1 = 0x17;
+        bin newVarInt2 = 0x19;
+        bin opEqualverify = 0x88;
+        bin opChecksig = 0xac;
+
+        bin [_, rawscr] = scriptCode @ 3;
+        verify checkSequence(period);
+        verify bin2num(ver) >= 2;
+
+        bin out1 = amount1  . newVarInt1 . opHash160 . pushHash . hash160(rawscr) . opEqual ;
+        bin out2 = amount2  . newVarInt2 . opDup . opHash160 . pushHash . protegePkh . opEqualverify . opChecksig;
+        verify hash256(out1 . out2) == Sha256(hashOutput); 
+    } 
+
+    challenge mecenas(PubKey pk1, PubKey pk2, Sig sig1, Sig sig2) {
+        verify (hash160(pk1) == protegePkh) || (hash160(pk1) == mecenasPkh);
+        verify (hash160(pk2) == escrowPkh) || (hash160(pk2) == mecenasPkh); 
+        verify pk1 != pk2;
+        verify checkMultiSig([sig1, sig2],[pk1, pk2]);
+    }
+
+}
+
+
