@@ -6,7 +6,7 @@ import electroncash.web as web
 import webbrowser
 from .mecenas_contract import MecenasContract
 from electroncash.address import ScriptOutput, OpCodes, Address
-from electroncash.transaction import Transaction,TYPE_ADDRESS, TYPE_SCRIPT
+from electroncash.transaction import Transaction,TYPE_ADDRESS, TYPE_SCRIPT, SerializationError
 from electroncash_gui.qt.amountedit  import BTCAmountEdit
 from electroncash.i18n import _
 from electroncash_gui.qt.util import *
@@ -17,6 +17,7 @@ from .contract_finder1 import find_contract_in_wallet
 from .mecenas_contract import ContractManager, UTXO, CONTRACT, MODE, PROTEGE, MECENAS, ESCROW
 from .util import *
 from math import ceil
+import json
 
 
 class Intro(QDialog, MessageBoxMixin):
@@ -417,6 +418,12 @@ class Manage(QDialog, MessageBoxMixin):
         b.clicked.connect(lambda: self.plugin.switch_to(Create, self.wallet_name, None, self.manager))
         hbox.addWidget(b)
         vbox.addStretch(1)
+        self.load_button = QPushButton(_("Load"))
+        hbox = QHBoxLayout()
+        vbox.addLayout(hbox)
+        hbox.addStretch(1)
+        hbox.addWidget(self.load_button)
+        self.load_button.clicked.connect(self.on_load)
         self.end_button = QPushButton( _("End"))
         self.end_button.clicked.connect(self.end)
         self.pledge_button = QPushButton(_("Take payment from pledge"))
@@ -439,25 +446,47 @@ class Manage(QDialog, MessageBoxMixin):
         if m == MECENAS or m == ESCROW:
             self.pledge_button.setDisabled(True)
 
+    def on_load(self):
+        try:
+            tx = self.main_window.read_tx_from_file(fileName=None)
+        except SerializationError as e:
+            self.show_critical(_("Electron Cash was unable to deserialize the transaction:") + "\n" + str(e))
+        if tx:
+            for i in tx.inputs():
+                i['x_pubkeys'].append(self.manager.pubkeys[self.manager.contract_index][self.manager.mode])
+            self.manager.signtx(tx)
+            self.show_transaction(tx)
+
+    def tx_gen_end(self, inputs):
+        outputs = [
+            (TYPE_ADDRESS, self.manager.contract.addresses[self.manager.mode], self.manager.value)]
+        tx = Transaction.from_io(inputs, outputs, locktime=0)
+        tx.version = 2
+        fee = len(tx.serialize(True)) // 2 + 1
+        if fee > self.manager.value:
+            self.show_error("Not enough funds to make the transaction!")
+            return
+        outputs = [
+            (TYPE_ADDRESS, self.manager.contract.addresses[self.manager.mode], self.manager.value - fee)]
+        tx = Transaction.from_io(inputs, outputs, locktime=0)
+        tx.version = 2
+        return tx
 
     def end(self):
         print("end")
         self.complete = self.manager.complete_method("end")
         inputs = self.manager.txin
-
+        tx = self.tx_gen_end(inputs)
+        if self.manager.version == 3 and self.manager.mode == ESCROW:
+            for i in inputs:
+                i['num_sig'] = 2
+                i['x_pubkeys'] = [self.manager.pubkeys[self.manager.contract_index][self.manager.mode]]
+                tx = self.tx_gen_end(inputs)
+                self.manager.signtx(tx)
+                tx.raw = tx.serialize()
+                show_transaction(tx, self.main_window, "End Mecenas Contract", prompt_if_unsaved=True)
+                return
         # Mark style fee estimation
-        outputs = [
-            (TYPE_ADDRESS, self.manager.contract.addresses[self.manager.mode], self.manager.value)]
-        tx = Transaction.from_io(inputs, outputs, locktime=0)
-        tx.version = 2
-        fee = len(tx.serialize(True)) // 2+1
-        if fee > self.manager.value:
-            self.show_error("Not enough funds to make the transaction!")
-            return
-        outputs = [
-            (TYPE_ADDRESS, self.manager.contract.addresses[self.manager.mode], self.manager.value-fee)]
-        tx = Transaction.from_io(inputs, outputs, locktime=0)
-        tx.version = 2
         if not self.wallet.is_watching_only():
             self.manager.signtx(tx)
             self.complete(tx)

@@ -380,29 +380,26 @@ class ContractManager:
         transaction before using this (see `signtx`).
         This works on multiple utxos if needed.
         """
-        pub = bytes.fromhex(self.pubkeys[self.contract_index][self.mode])
         for txin in tx.inputs():
             # find matching inputs
             if txin['address'] != self.contract.address:
                 continue
             sig1 = txin['signatures'][0]
             sig2 = txin['signatures'][1]
-            if not sig:
+            pub1 = txin['x_pubkeys'][0]
+            pub2 = txin['x_pubkeys'][1]
+            if not (sig1 and sig2 and pub1 and pub2):
                 continue
-            sig1 = bytes.fromhex(sig)
+            sig1 = bytes.fromhex(txin['signatures'][0])
+            sig2 = bytes.fromhex(txin['signatures'][1])
+            pub1 = bytes.fromhex(txin['x_pubkeys'][0])
+            pub2 = bytes.fromhex(txin['x_pubkeys'][1])
             if txin['scriptSig'] == self.dummy_scriptsig:
                 script = [
-                    len(pub), pub,
+                    len(pub1), pub1,
+                    len(pub2), pub2,
                     len(sig1), sig1,
                     len(sig2), sig2,
-                    Op.OP_2, 77, len(self.contract.redeemscript).to_bytes(2, 'little'), self.contract.redeemscript,
-                    ]
-                print("scriptSig length " + str(joinbytes(script).hex().__sizeof__()))
-                txin['scriptSig'] = joinbytes(script).hex()
-            if txin['scriptSig'] == self.dummy_scriptsig:
-                script = [
-                    len(pub), pub,
-                    len(sig), sig,
                     Op.OP_2, 77, len(self.contract.redeemscript).to_bytes(2, 'little'), self.contract.redeemscript,
                     ]
                 print("scriptSig length " + str(joinbytes(script).hex().__sizeof__()))
