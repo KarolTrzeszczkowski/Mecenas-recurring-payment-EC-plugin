@@ -111,7 +111,7 @@ class AdvancedWid(QWidget):
         hbox = QHBoxLayout()
         l = QLabel("<b> %s </b>" % "Advanced options")
         vbox.addWidget(l)
-        self.nothing = QRadioButton("No aditional options")
+        self.nothing = QRadioButton("Mecenas v1.1 (recipient needs plugin version above 1.2)")
         self.nothing.option = 1
         self.nothing.setChecked(True)
         self.nothing.toggled.connect(self.onClick)
