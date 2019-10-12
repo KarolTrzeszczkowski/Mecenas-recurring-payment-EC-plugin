@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import *
 import electroncash.web as web
 import webbrowser
 from .mecenas_contract import MecenasContract
-from electroncash.address import ScriptOutput, OpCodes, Address
+from electroncash.address import ScriptOutput, OpCodes, Address, Script
 from electroncash.transaction import Transaction,TYPE_ADDRESS, TYPE_SCRIPT, SerializationError
 from electroncash_gui.qt.amountedit  import BTCAmountEdit
 from electroncash.i18n import _
@@ -111,14 +111,14 @@ class AdvancedWid(QWidget):
         hbox = QHBoxLayout()
         l = QLabel("<b> %s </b>" % "Advanced options")
         vbox.addWidget(l)
-        self.nothing = QRadioButton("Mecenas v1.1 (recipient needs plugin version above 1.2)")
+        self.nothing = QRadioButton("Mecenas contract v1.1 ")
         self.nothing.option = 1
         self.nothing.setChecked(True)
         self.nothing.toggled.connect(self.onClick)
         vbox.addWidget(self.nothing)
         self.escrow_address = QLineEdit()
         self.escrow_address.setPlaceholderText("Escrow bchaddress")
-        self.no_opt_out_check = QRadioButton("Mecenas can end the contract only if protege is inactive for a month.")
+        self.no_opt_out_check = QRadioButton("Mecenas can terminate the contract only if protege won't claim the money for a month.")
         self.no_opt_out_check.option = 2
         self.no_opt_out_check.toggled.connect(self.onClick)
         vbox.addWidget(self.no_opt_out_check)
@@ -128,7 +128,7 @@ class AdvancedWid(QWidget):
         self.escrow_address.setDisabled(True)
         self.escrow_address.textEdited.connect(self.toggle_sig.emit)
         vbox.addWidget(self.no_opt_out_check)
-        self.legacy = QRadioButton("Legacy version")
+        self.legacy = QRadioButton("Legacy version (recipient has a plugin version below 1.2)")
         self.legacy.option = 4
         self.legacy.toggled.connect(self.onClick)
         vbox.addLayout(hbox)
@@ -447,7 +447,7 @@ class Manage(QDialog, MessageBoxMixin):
         hbox.addStretch(1)
         hbox.addWidget(self.load_button)
         self.load_button.clicked.connect(self.on_load)
-        self.end_button = QPushButton( _("End"))
+        self.end_button = QPushButton( _("Terminate contract"))
         self.end_button.clicked.connect(self.end)
         self.pledge_button = QPushButton(_("Take payment from pledge"))
         self.pledge_button.clicked.connect(self.pledge)
@@ -470,68 +470,96 @@ class Manage(QDialog, MessageBoxMixin):
             self.pledge_button.setDisabled(True)
 
     def on_load(self):
+        tx=None
         try:
             tx = self.main_window.read_tx_from_file(fileName=None)
         except SerializationError as e:
             self.show_critical(_("Electron Cash was unable to deserialize the transaction:") + "\n" + str(e))
         if tx:
-            for i in tx.inputs():
-                i['x_pubkeys'].append(self.manager.pubkeys[self.manager.contract_index][self.manager.mode])
-            self.manager.signtx(tx)
-            self.show_transaction(tx)
+            tx.raw = tx.serialize()
+            inputs = tx.inputs()
+            print("Inputs on load ",inputs)
+            metadata = inputs[0]['scriptSig'].split('aaaaa')
+            sig = metadata[1].strip('0')
+            xpub = metadata[0].strip('0')
+            print("xpub", xpub)
+            for inp in tx.inputs():
+                for i, j in self.manager.txin[0].items():
+                    inp[i]=j
+                inp['x_pubkeys'].append(xpub)
+                inp['num_sig'] = 2
+                inp['sequence'] = 0
+                inp['signatures'] = []
+            print(tx.inputs())
+            tx.raw = tx.serialize()
 
-    def tx_gen_end(self, inputs):
-        outputs = [
-            (TYPE_ADDRESS, self.manager.contract.addresses[self.manager.mode], self.manager.value)]
-        tx = Transaction.from_io(inputs, outputs, locktime=0)
-        tx.version = 2
-        fee = len(tx.serialize(True)) // 2 + 1
-        if fee > self.manager.value:
-            self.show_error("Not enough funds to make the transaction!")
-            return
-        outputs = [
-            (TYPE_ADDRESS, self.manager.contract.addresses[self.manager.mode], self.manager.value - fee)]
-        tx = Transaction.from_io(inputs, outputs, locktime=0)
-        tx.version = 2
-        return tx
+            # self.manager.signtx(tx)
+            self.wallet.sign_transaction(tx, self.password)
+            for inp in tx.inputs():
+                print(inp['signatures'])
+                inp['signatures'] = sig
+            tx.raw = tx.serialize()
+            print(tx.inputs())
+            complete = self.manager.complete_method("end")
+            complete(tx)
+            print(tx.inputs())
+            print("ScriptPK", self.manager.script_pub_key)
+            show_transaction(tx, self.main_window, "End Mecenas Contract", prompt_if_unsaved=True)
+
 
     def end(self):
         print("end")
-        self.complete = self.manager.complete_method("end")
-        inputs = self.manager.txin
-        tx = self.tx_gen_end(inputs)
         if self.manager.version == 3 and self.manager.mode == ESCROW:
+            inputs = self.manager.txin
             for i in inputs:
                 i['num_sig'] = 2
-                i['x_pubkeys'] = [self.manager.pubkeys[self.manager.contract_index][self.manager.mode]]
-                tx = self.tx_gen_end(inputs)
+                i['x_pubkeys'] = [self.manager.pubkeys[self.manager.contract_index][ESCROW]]
+            tx = self.manager.end_tx(inputs)
+            if not self.wallet.is_watching_only():
                 self.manager.signtx(tx)
-                tx.raw = tx.serialize()
-                show_transaction(tx, self.main_window, "End Mecenas Contract", prompt_if_unsaved=True)
-                return
-        # Mark style fee estimation
-        if not self.wallet.is_watching_only():
-            self.manager.signtx(tx)
-            self.complete(tx)
-        show_transaction(tx, self.main_window, "End Mecenas Contract", prompt_if_unsaved=True)
-        self.plugin.switch_to(Manage, self.wallet_name, None, None)
+            inputs = tx.inputs()[0]
+            sig = inputs['signatures'][0]
+            pk = inputs["x_pubkeys"][0]
+            inputs['scriptSig']=inputs['scriptSig'][:-(len(sig)+len(pk)+5)]+pk+'aaaaa'+sig
+            tx.raw = tx.serialize()
+            print("ScriptPK", self.manager.script_pub_key)
+            show_transaction(tx, self.main_window, "End Mecenas Contract", prompt_if_unsaved=True)
+            return
+        else:
+            try:
+                tx = self.manager.end_tx()
+            except Exception as e:
+                self.show_error(e)
+            show_transaction(tx, self.main_window, "End Mecenas Contract", prompt_if_unsaved=True)
 
     def pledge(self):
-        self.complete = self.manager.complete_method()
-        inputs = self.manager.txin
-        # Mark style fee estimation
-        outputs = [
-            (TYPE_ADDRESS, self.manager.contract.address, self.manager.value - self.fee - self.manager.rpayment),
-            (TYPE_ADDRESS, self.manager.contract.addresses[self.manager.mode], self.manager.rpayment)        ]
-
-        tx = Transaction.from_io(inputs, outputs, locktime=0)
-        tx.version = 2
-        #print(tx.outputs())
-        if not self.wallet.is_watching_only():
-            self.manager.signtx(tx)
-            self.complete(tx)
-        show_transaction(tx, self.main_window, "Pledge", prompt_if_unsaved=True)
+        if self.manager.chosen_utxo >= 0:
+            yorn=self.main_window.question(_(
+                 "Do you wish to take the payment?"))
+            if yorn:
+                tx = self.manager.pledge_tx()
+                complete = self.manager.complete_method()
+                if not self.wallet.is_watching_only():
+                    self.manager.signtx(tx)
+                    complete(tx)
+                if tx:
+                    self.main_window.network.broadcast_transaction2(tx)
+                    # show_transaction(tx, self.main_window, "Claim pledge", prompt_if_unsaved=True)
+                return
+            else:
+                return
+        # else:
+        #     yorn=self.main_window.question(_(
+        #          "Do you wish to take the payment?"))
+        #     if yorn:
+        #         for i in self.manager.txin:
+        #             tx = self.ref_tx(contract,i, m)
+        #             if tx:
+        #                 # self.main_window.network.broadcast_transaction2(tx)
+        #                 show_transaction(tx, self.main_window, "Refresh entry", prompt_if_unsaved=True)
         self.plugin.switch_to(Manage, self.wallet_name, None, None)
+
+
 
     def save(self, tx):
         name = 'signed_%s.txn' % (tx.txid()[0:8]) if tx.is_complete() else 'unsigned.txn'

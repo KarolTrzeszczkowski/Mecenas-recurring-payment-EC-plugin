@@ -1,5 +1,6 @@
 from electroncash.bitcoin import regenerate_key, MySigningKey, Hash
-from electroncash.address import Address, OpCodes as Op
+from electroncash.address import Address, Script, OpCodes as Op
+from electroncash.transaction import Transaction,TYPE_ADDRESS
 import ecdsa
 from .contract import Contract
 from math import ceil
@@ -186,7 +187,7 @@ class MecenasContract(Contract):
                 104, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, Op.OP_OVER, Op.OP_SIZE, Op.OP_NIP, Op.OP_8, Op.OP_SUB,
                 Op.OP_SPLIT, Op.OP_14, Op.OP_PICK, Op.OP_16, Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_14, Op.OP_PICK,
                 Op.OP_SIZE, Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_14, Op.OP_PICK, Op.OP_SHA256, 1, 17, Op.OP_PICK,
-                Op.OP_CHECKDATASIGVERIFY, 2, 232, 3, Op.OP_9, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK,
+                Op.OP_CHECKDATASIGVERIFY, 2, 220, 5, Op.OP_9, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK,
                 Op.OP_BIN2NUM, Op.OP_11, Op.OP_PICK, Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN,
                 1, 118, 1, 135, 1, 169, 1, 20, 1, 23, 1, 25, 1, 136, 1, 172, Op.OP_12, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT,
                 Op.OP_NIP, 1, 19, Op.OP_PICK, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, 1, 18, Op.OP_PICK, Op.OP_BIN2NUM,
@@ -264,9 +265,11 @@ class ContractManager:
         self.keypair = keypairs
         self.pubkeys = public_keys
         self.wallet = wallet
+        self.fee = 1000
         self.rpayment = self.contract.rpayment
         self.dummy_scriptsig = '00'*(110 + len(self.contract.redeemscript))
         self.version = self.contract.version
+        self.script_pub_key = Script.P2SH_script(self.contract.address.hash160).hex()
 
         if self.mode == PROTEGE:
             self.sequence=2**22+self.contract.i_time
@@ -284,6 +287,10 @@ class ContractManager:
         self.rpayment = self.contract.rpayment
         self.mode = m
         self.version = contract_tuple[CONTRACT].version
+        if self.version == 3:
+            self.fee = 1500
+        else:
+            self.fee = 1000
         if self.mode == PROTEGE:
             self.sequence=2**22+self.contract.i_time
         elif self.mode == MECENAS and self.contract.version == 2:
@@ -333,7 +340,7 @@ class ContractManager:
             return self.completetx_ref
         if self.mode == PROTEGE and self.version == 3 and action == 'end':
             return self.completetx_multisig
-        if self.mode == PROTEGE and (self.version == 1.1 or self.version ==2):
+        if self.mode == PROTEGE and (self.version == 1.1 or self.version ==2 or self.version == 3):
             print("completion method ok")
             return self.complete_covenant
         if self.mode == MECENAS and self.version != 3:
@@ -344,8 +351,32 @@ class ContractManager:
 
     def signtx(self, tx):
         """generic tx signer for compressed pubkey"""
+        print("signing")
         tx.sign(self.keypair)
 
+    def end_tx(self, inputs):
+        outputs = [
+            (TYPE_ADDRESS, self.contract.addresses[MECENAS], self.value)]
+        tx = Transaction.from_io(inputs, outputs, locktime=0)
+        tx.version = 2
+        fee = 2*(len(tx.serialize(True)) // 2 + 1)
+        if fee > self.value:
+            raise Exception("Not enough funds to make the transaction!")
+        outputs = [
+            (TYPE_ADDRESS, self.contract.addresses[self.mode], self.value - fee)]
+        tx = Transaction.from_io(inputs, outputs, locktime=0)
+        tx.version = 2
+        return tx
+
+    def pledge_tx(self):
+        inputs = self.txin
+        outputs = [
+            (TYPE_ADDRESS, self.contract.address, self.value - self.fee - self.rpayment),
+            (TYPE_ADDRESS, self.contract.addresses[PROTEGE], self.rpayment)        ]
+        tx = Transaction.from_io(inputs, outputs, locktime=0)
+        tx.version = 2
+        #print(tx.outputs())
+        return tx
 
     def completetx(self, tx):
         """
@@ -353,6 +384,7 @@ class ContractManager:
         transaction before using this (see `signtx`).
         This works on multiple utxos if needed.
         """
+        print("completing")
         pub = bytes.fromhex(self.pubkeys[self.contract_index][self.mode])
         for txin in tx.inputs():
             # find matching inputs
@@ -380,10 +412,13 @@ class ContractManager:
         transaction before using this (see `signtx`).
         This works on multiple utxos if needed.
         """
+        print("completing multisig")
+        print(self.contract.address)
         for txin in tx.inputs():
             # find matching inputs
             if txin['address'] != self.contract.address:
                 continue
+            print("addr ok")
             sig1 = txin['signatures'][0]
             sig2 = txin['signatures'][1]
             pub1 = txin['x_pubkeys'][0]
@@ -396,6 +431,10 @@ class ContractManager:
             pub2 = bytes.fromhex(txin['x_pubkeys'][1])
             if txin['scriptSig'] == self.dummy_scriptsig:
                 script = [
+                    # len(pub2), pub2,
+                    # len(pub1), pub1,
+                    # len(sig2), sig2,
+                    # len(sig1), sig1,
                     len(pub1), pub1,
                     len(pub2), pub2,
                     len(sig1), sig1,
