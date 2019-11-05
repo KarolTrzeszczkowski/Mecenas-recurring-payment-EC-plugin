@@ -33,7 +33,6 @@ class MecenasContract(Contract):
             self.i_time = data[0]
             self.rpayment = data[1]
         except:
-            print("except")
             self.rpayment = PLEDGE
             self.i_time = PLEDGE_TIME // 512
 
@@ -181,37 +180,39 @@ class MecenasContract(Contract):
                 3, self.i_time_bytes, 64,
                 Op.OP_5, Op.OP_PICK, Op.OP_TRUE, Op.OP_EQUAL,
                 Op.OP_IF,
-                Op.OP_6, Op.OP_PICK, Op.OP_4, Op.OP_SPLIT, Op.OP_DROP, Op.OP_7, Op.OP_PICK, Op.OP_DUP, Op.OP_SIZE,
-                Op.OP_NIP, 1, 40, Op.OP_SUB, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, 1, 32, Op.OP_SPLIT, Op.OP_DROP, Op.OP_9,
-                Op.OP_PICK, Op.OP_DUP, Op.OP_SIZE, Op.OP_NIP, 1, 44, Op.OP_SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_DUP, 1,
-                104, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, Op.OP_OVER, Op.OP_SIZE, Op.OP_NIP, Op.OP_8, Op.OP_SUB,
-                Op.OP_SPLIT, Op.OP_14, Op.OP_PICK, Op.OP_16, Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_14, Op.OP_PICK,
-                Op.OP_SIZE, Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_14, Op.OP_PICK, Op.OP_SHA256, 1, 17, Op.OP_PICK,
-                Op.OP_CHECKDATASIGVERIFY, 2, 220, 5, Op.OP_9, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK,
-                Op.OP_BIN2NUM, Op.OP_11, Op.OP_PICK, Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN,
-                1, 118, 1, 135, 1, 169, 1, 20, 1, 23, 1, 25, 1, 136, 1, 172, Op.OP_12, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT,
-                Op.OP_NIP, 1, 19, Op.OP_PICK, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, 1, 18, Op.OP_PICK, Op.OP_BIN2NUM,
-                Op.OP_2, Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT,
-                Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_OVER, Op.OP_HASH160, Op.OP_CAT,
-                Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_10,
-                Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, 1, 25,
-                Op.OP_PICK, Op.OP_CAT, Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3, Op.OP_PICK, Op.OP_CAT, Op.OP_2DUP,
-                Op.OP_CAT, Op.OP_HASH256, 1, 19, Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
-                Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
-                Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
-                Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                    Op.OP_6, Op.OP_PICK, Op.OP_4, Op.OP_SPLIT, Op.OP_DROP, Op.OP_7, Op.OP_PICK, Op.OP_DUP, Op.OP_SIZE,
+                    Op.OP_NIP, 1, 40, Op.OP_SUB, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, 1, 32, Op.OP_SPLIT, Op.OP_DROP, Op.OP_9,
+                    Op.OP_PICK, Op.OP_DUP, Op.OP_SIZE, Op.OP_NIP, 1, 44, Op.OP_SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_DUP, 1,
+                    104, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, Op.OP_OVER, Op.OP_SIZE, Op.OP_NIP, Op.OP_8, Op.OP_SUB,
+                    Op.OP_SPLIT, Op.OP_14, Op.OP_PICK, Op.OP_16, Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_14, Op.OP_PICK,
+                    Op.OP_SIZE, Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_14, Op.OP_PICK, Op.OP_SHA256, 1, 17, Op.OP_PICK,
+                    Op.OP_CHECKDATASIGVERIFY, 2, 220, 5, Op.OP_9, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK,
+                    Op.OP_BIN2NUM, Op.OP_11, Op.OP_PICK, Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN,
+                    1, 118, 1, 135, 1, 169, 1, 20, 1, 23, 1, 25, 1, 136, 1, 172, Op.OP_12, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT,
+                    Op.OP_NIP, 1, 19, Op.OP_PICK, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, 1, 18, Op.OP_PICK, Op.OP_BIN2NUM,
+                    Op.OP_2, Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT,
+                    Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_OVER, Op.OP_HASH160, Op.OP_CAT,
+                    Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_10,
+                    Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, 1, 25,
+                    Op.OP_PICK, Op.OP_CAT, Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3, Op.OP_PICK, Op.OP_CAT, Op.OP_2DUP,
+                    Op.OP_CAT, Op.OP_HASH256, 1, 19, Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                    Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                    Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                    Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
                 Op.OP_ELSE,
-                Op.OP_5, Op.OP_PICK, Op.OP_2, Op.OP_EQUAL,
-                Op.OP_IF,
-                Op.OP_9, Op.OP_PICK, Op.OP_HASH160, Op.OP_5, Op.OP_PICK, Op.OP_EQUAL, Op.OP_10, Op.OP_PICK,
-                Op.OP_HASH160, Op.OP_5, Op.OP_PICK, Op.OP_EQUAL, Op.OP_BOOLOR, Op.OP_VERIFY, Op.OP_8, Op.OP_PICK,
-                Op.OP_HASH160, Op.OP_3, Op.OP_PICK, Op.OP_EQUAL, Op.OP_9, Op.OP_PICK, Op.OP_HASH160, Op.OP_5,
-                Op.OP_PICK, Op.OP_EQUAL, Op.OP_BOOLOR, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_9, Op.OP_PICK,
-                Op.OP_EQUAL, Op.OP_NOT, Op.OP_VERIFY, Op.OP_FALSE, Op.OP_7, Op.OP_PICK, Op.OP_7, Op.OP_PICK, Op.OP_2,
-                Op.OP_11, Op.OP_PICK, Op.OP_11, Op.OP_PICK, Op.OP_2, Op.OP_CHECKMULTISIG, Op.OP_NIP, Op.OP_NIP,
-                Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
-                Op.OP_ELSE,
-                Op.OP_FALSE, Op.OP_ENDIF, Op.OP_ENDIF
+                    Op.OP_5, Op.OP_PICK, Op.OP_2, Op.OP_EQUAL,
+                    Op.OP_IF,
+                        Op.OP_9, Op.OP_PICK, Op.OP_HASH160, Op.OP_5, Op.OP_PICK, Op.OP_EQUAL, Op.OP_10, Op.OP_PICK,
+                        Op.OP_HASH160, Op.OP_5, Op.OP_PICK, Op.OP_EQUAL, Op.OP_BOOLOR, Op.OP_VERIFY, Op.OP_8,
+                        Op.OP_PICK, Op.OP_HASH160, Op.OP_3, Op.OP_PICK, Op.OP_EQUAL, Op.OP_9, Op.OP_PICK, Op.OP_HASH160,
+                        Op.OP_5, Op.OP_PICK, Op.OP_EQUAL, Op.OP_BOOLOR, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_9,
+                        Op.OP_PICK, Op.OP_EQUAL, Op.OP_NOT, Op.OP_VERIFY, Op.OP_7, Op.OP_PICK, Op.OP_10, Op.OP_PICK,
+                        Op.OP_CHECKSIGVERIFY, Op.OP_6, Op.OP_PICK, Op.OP_9, Op.OP_PICK, Op.OP_CHECKSIG, Op.OP_NIP,
+                        Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                    Op.OP_ELSE,
+                        Op.OP_FALSE,
+                    Op.OP_ENDIF,
+                Op.OP_ENDIF
 
             ])
 
@@ -341,7 +342,6 @@ class ContractManager:
         if self.mode == PROTEGE and self.version == 3 and action == 'end':
             return self.completetx_multisig
         if self.mode == PROTEGE and (self.version == 1.1 or self.version ==2 or self.version == 3):
-            print("completion method ok")
             return self.complete_covenant
         if self.mode == MECENAS and self.version != 3:
             return self.completetx
@@ -351,7 +351,6 @@ class ContractManager:
 
     def signtx(self, tx):
         """generic tx signer for compressed pubkey"""
-        print("signing")
         tx.sign(self.keypair)
 
     def end_tx(self, inputs):
@@ -363,7 +362,7 @@ class ContractManager:
         if fee > self.value:
             raise Exception("Not enough funds to make the transaction!")
         outputs = [
-            (TYPE_ADDRESS, self.contract.addresses[self.mode], self.value - fee)]
+            (TYPE_ADDRESS, self.contract.addresses[MECENAS], self.value - fee)]
         tx = Transaction.from_io(inputs, outputs, locktime=0)
         tx.version = 2
         return tx
@@ -413,12 +412,10 @@ class ContractManager:
         This works on multiple utxos if needed.
         """
         print("completing multisig")
-        print(self.contract.address)
         for txin in tx.inputs():
             # find matching inputs
             if txin['address'] != self.contract.address:
                 continue
-            print("addr ok")
             sig1 = txin['signatures'][0]
             sig2 = txin['signatures'][1]
             pub1 = txin['x_pubkeys'][0]

@@ -11,9 +11,9 @@ from electroncash_gui.qt.amountedit  import BTCAmountEdit
 from electroncash.i18n import _
 from electroncash_gui.qt.util import *
 from electroncash.wallet import Multisig_Wallet
-from electroncash.util import NotEnoughFunds
+from electroncash.util import NotEnoughFunds, ServerErrorResponse
 from electroncash_gui.qt.transaction_dialog import show_transaction
-from .contract_finder1 import find_contract_in_wallet
+from .contract_finder import find_contract_in_wallet
 from .mecenas_contract import ContractManager, UTXO, CONTRACT, MODE, PROTEGE, MECENAS, ESCROW
 from .util import *
 from math import ceil
@@ -303,6 +303,12 @@ class Create(QDialog, MessageBoxMixin):
         if self.total_value >= 2100000000:
             self.show_error("Contract total value shouldn't be larger than 21 BCH")
             return
+        if self.contract.version == 3:
+            receiver_is_mine = self.wallet.is_mine(self.contract.addresses[0])
+            escrow_is_mine = self.wallet.is_mine(self.contract.addresses[2])
+            if receiver_is_mine and escrow_is_mine:
+                self.show_error("All three participants are in your wallet. Such contract will be impossible to terminate. Aborting.")
+                return
         yorn = self.main_window.question(_(
             "Do you wish to create the Mecenas Contract?"))
         if not yorn:
@@ -335,7 +341,8 @@ class ContractTree(MessageBoxMixin, PrintError, MyTreeWidget):
             _('Pledge available in: '),
             _('Amount'),
             _('Recurring value'),
-            _('My role')],stretch_column=0, deferred_updates=True)
+            _('My role'),
+            _('Version')],stretch_column=0, deferred_updates=True)
         self.contract_tuple_list = contracts
         self.monospace_font = QFont(MONOSPACE_FONT)
 
@@ -370,13 +377,24 @@ class ContractTree(MessageBoxMixin, PrintError, MyTreeWidget):
         # else:
         for t in self.contract_tuple_list:
             for m in t[MODE]:
-                contract = QTreeWidgetItem([t[CONTRACT].address.to_ui_string(),'','','',role_name(m)])
+                ver = str(t[CONTRACT].version)
+                a = 0
+                for u in t[UTXO]:
+                    a+= u.get('value')
+                amount = self.parent.format_amount(a, is_diff=False, whitespaces=True)
+                value = self.parent.format_amount(len(t[UTXO])*t[CONTRACT].rpayment, is_diff=False, whitespaces=True)
+                contract = QTreeWidgetItem([t[CONTRACT].address.to_ui_string(),'',"Total: " + amount,"Total: " + value,role_name(m),ver])
                 contract.setData(1, Qt.UserRole, t)
                 contract.setData(2,Qt.UserRole, m)
+                contract.setFont(0, self.monospace_font)
+                contract.setTextAlignment(2, Qt.AlignRight)
+                contract.setTextAlignment(3, Qt.AlignRight)
                 self.addChild(contract)
                 for u in t[UTXO]:
                     item = self.add_item(u, contract, t, m)
                     self.setCurrentItem(item)
+        self.sortByColumn(4, Qt.SortOrder.DescendingOrder)
+
 
 
     def add_item(self, u, parent_item, t, m):
@@ -384,10 +402,13 @@ class ContractTree(MessageBoxMixin, PrintError, MyTreeWidget):
         amount = self.parent.format_amount(u.get('value'), is_diff=False, whitespaces=True)
         value = self.parent.format_amount(t[CONTRACT].rpayment, is_diff=False, whitespaces=True)
         mode = role_name(m)
-        utxo_item = SortableTreeWidgetItem([u['tx_hash'] , expiration, amount, value, mode])
+        utxo_item = SortableTreeWidgetItem([u['tx_hash'] , expiration, amount, value, '', ''])
         utxo_item.setData(0, Qt.UserRole, u)
         utxo_item.setData(1, Qt.UserRole, t)
         utxo_item.setData(2, Qt.UserRole, m)
+        utxo_item.setTextAlignment(2, Qt.AlignRight)
+        utxo_item.setTextAlignment(3, Qt.AlignRight)
+
         parent_item.addChild(utxo_item)
         return utxo_item
 
@@ -441,7 +462,7 @@ class Manage(QDialog, MessageBoxMixin):
         b.clicked.connect(lambda: self.plugin.switch_to(Create, self.wallet_name, None, self.manager))
         hbox.addWidget(b)
         vbox.addStretch(1)
-        self.load_button = QPushButton(_("Load"))
+        self.load_button = QPushButton(_("Load and sign termination tx"))
         hbox = QHBoxLayout()
         vbox.addLayout(hbox)
         hbox.addStretch(1)
@@ -478,98 +499,128 @@ class Manage(QDialog, MessageBoxMixin):
         if tx:
             tx.raw = tx.serialize()
             inputs = tx.inputs()
-            print("Inputs on load ",inputs)
-            metadata = inputs[0]['scriptSig'].split('aaaaa')
-            sig = metadata[1].strip('0')
-            xpub = metadata[0].strip('0')
-            print("xpub", xpub)
+            metadata = inputs[0]['scriptSig'].split('1234567890')
+            sig = metadata[1]
+            xpub = '0'+metadata[0].strip('0')
+            addr1 = Address.from_pubkey(xpub)
+            other_party_role = self.manager.contract.addresses.index(addr1)
+
             for inp in tx.inputs():
                 for i, j in self.manager.txin[0].items():
                     inp[i]=j
-                inp['x_pubkeys'].append(xpub)
-                inp['num_sig'] = 2
+                inp['pubkeys'] = inp['x_pubkeys'] # problems with signing without it
                 inp['sequence'] = 0
-                inp['signatures'] = []
-            print(tx.inputs())
+                inp['signatures'] = [None]
             tx.raw = tx.serialize()
-
-            # self.manager.signtx(tx)
-            self.wallet.sign_transaction(tx, self.password)
+            self.manager.signtx(tx)
+            #self.wallet.sign_transaction(tx, self.password)
             for inp in tx.inputs():
                 print(inp['signatures'])
-                inp['signatures'] = sig
+                inp['x_pubkeys'].append(xpub)
+                inp['signatures'].append(sig)
+                if self.manager.mode > other_party_role:
+                    # sender key can be on any place but receiver has to be on the first and escrow has to be on the second.
+                    # see mecenas_v3.spedn
+                    inp['x_pubkeys'][0],inp['x_pubkeys'][1] = inp['x_pubkeys'][1],inp['x_pubkeys'][0]
+                    inp['signatures'][0],inp['signatures'][1] = inp['signatures'][1],inp['signatures'][0]
+                inp['num_sig'] = 2
             tx.raw = tx.serialize()
-            print(tx.inputs())
             complete = self.manager.complete_method("end")
             complete(tx)
-            print(tx.inputs())
-            print("ScriptPK", self.manager.script_pub_key)
             show_transaction(tx, self.main_window, "End Mecenas Contract", prompt_if_unsaved=True)
 
 
     def end(self):
         print("end")
-        if self.manager.version == 3 and self.manager.mode == ESCROW:
-            inputs = self.manager.txin
-            for i in inputs:
-                i['num_sig'] = 2
-                i['x_pubkeys'] = [self.manager.pubkeys[self.manager.contract_index][ESCROW]]
-            tx = self.manager.end_tx(inputs)
-            if not self.wallet.is_watching_only():
-                self.manager.signtx(tx)
-            inputs = tx.inputs()[0]
-            sig = inputs['signatures'][0]
-            pk = inputs["x_pubkeys"][0]
-            inputs['scriptSig']=inputs['scriptSig'][:-(len(sig)+len(pk)+5)]+pk+'aaaaa'+sig
-            tx.raw = tx.serialize()
-            print("ScriptPK", self.manager.script_pub_key)
-            show_transaction(tx, self.main_window, "End Mecenas Contract", prompt_if_unsaved=True)
-            return
-        else:
-            try:
-                tx = self.manager.end_tx()
-            except Exception as e:
-                self.show_error(e)
-            show_transaction(tx, self.main_window, "End Mecenas Contract", prompt_if_unsaved=True)
+        yorn=self.main_window.question(_(
+                 "Do you wish to take the payment?"))
+        if yorn:
+            if self.manager.version == 3:
+                inputs = self.manager.txin
+                for i in inputs:
+                    i['num_sig'] = 2
+                    i['x_pubkeys'] = [self.manager.pubkeys[self.manager.contract_index][self.manager.mode]]
+                tx = self.manager.end_tx(inputs)
+                if not self.wallet.is_watching_only():
+                    self.manager.signtx(tx)
+                inputs = tx.inputs()[0]
+                sig = inputs['signatures'][0]
+                pk = inputs["x_pubkeys"][0]
+                print('SIGNATURE', sig)
+                inputs['scriptSig']=inputs['scriptSig'][:-(len(sig)+len(pk)+10)]+pk+'1234567890'+sig
+                tx.raw = tx.serialize()
+                print("ScriptPK", self.manager.script_pub_key)
+                try:
+                    self.main_window.network.broadcast_transaction2(tx)
+                except ServerErrorResponse as e:
+                    bip68msg = 'the transaction was rejected by network rules.\n\nnon-BIP68-final (code 64)'
+                    if bip68msg in e.server_msg['message']:
+                        self.show_error("Not ready yet!")
+                    else:
+                        self.show_error(e.server_msg)
+                return
+            else:
+                try:
+                    inputs = self.manager.txin
+                    tx = self.manager.end_tx(inputs)
+                    self.main_window.network.broadcast_transaction2(tx)
+                    print("OUT", out)
+                except ServerErrorResponse as e:
+                    bip68msg = 'the transaction was rejected by network rules.\n\nnon-BIP68-final (code 64)'
+                    if bip68msg in e.server_msg['message']:
+                        self.show_error("Not ready yet!")
+                    else:
+                        self.show_error(e.server_msg)
 
     def pledge(self):
         if self.manager.chosen_utxo >= 0:
             yorn=self.main_window.question(_(
                  "Do you wish to take the payment?"))
             if yorn:
+
                 tx = self.manager.pledge_tx()
                 complete = self.manager.complete_method()
                 if not self.wallet.is_watching_only():
                     self.manager.signtx(tx)
                     complete(tx)
                 if tx:
-                    self.main_window.network.broadcast_transaction2(tx)
+                    try:
+                        self.main_window.network.broadcast_transaction2(tx)
                     # show_transaction(tx, self.main_window, "Claim pledge", prompt_if_unsaved=True)
+                    except ServerErrorResponse as e:
+                        bip68msg = 'the transaction was rejected by network rules.\n\nnon-BIP68-final (code 64)'
+                        if bip68msg in e.server_msg['message']:
+                            self.show_error("Not ready yet!")
+                        else:
+                            self.show_error(e.server_msg)
                 return
             else:
                 return
-        # else:
-        #     yorn=self.main_window.question(_(
-        #          "Do you wish to take the payment?"))
-        #     if yorn:
-        #         for i in self.manager.txin:
-        #             tx = self.ref_tx(contract,i, m)
-        #             if tx:
-        #                 # self.main_window.network.broadcast_transaction2(tx)
-        #                 show_transaction(tx, self.main_window, "Refresh entry", prompt_if_unsaved=True)
+        else:
+            yorn=self.main_window.question(_("Do you wish to take the payment?"))
+            if yorn:
+                contract, utxo_index, m = self.contract_tree.get_selected_id()
+                utxos = contract[UTXO]
+                for u in range(len(utxos)):
+                    self.manager.choice(contract, u, m)
+                    tx = self.manager.pledge_tx()
+                    complete = self.manager.complete_method()
+                    if not self.wallet.is_watching_only():
+                        self.manager.signtx(tx)
+                        complete(tx)
+                    if tx:
+                        try:
+                            self.main_window.network.broadcast_transaction2(tx)
+                        except ServerErrorResponse as e:
+                            bip68msg = 'the transaction was rejected by network rules.\n\nnon-BIP68-final (code 64)'
+                            if bip68msg in e.server_msg['message']:
+                                self.show_error("Not ready yet!")
+                            else:
+                                self.show_error(e.server_msg)
+                       # show_transaction(tx, self.main_window, "Refresh entry", prompt_if_unsaved=True)
         self.plugin.switch_to(Manage, self.wallet_name, None, None)
 
 
-
-    def save(self, tx):
-        name = 'signed_%s.txn' % (tx.txid()[0:8]) if tx.is_complete() else 'unsigned.txn'
-        fileName = self.main_window.getSaveFileName(_("Select where to save your signed transaction"), name, "*.txn")
-        if fileName:
-            tx_dict = tx.as_dict()
-            with open(fileName, "w+", encoding='utf-8') as f:
-                f.write(json.dumps(tx_dict, indent=4) + '\n')
-            self.show_message(_("Transaction saved successfully"))
-            self.saved = True
 
 def role_name(i):
     if i == PROTEGE:

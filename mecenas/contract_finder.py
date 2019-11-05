@@ -1,34 +1,24 @@
 
-from .mecenas_contract import MecenasContract
 from electroncash.address import Address, ScriptOutput
 from itertools import permutations, combinations
 
-
-def find_contract(wallet):
-    """Searching transactions for the one maching contract
-    by creating contracts from outputs"""
+def find_contract_in_wallet(wallet, contract_cls):
     contract_tuple_list=[]
     for hash, t in wallet.transactions.items():
-        out = t.outputs()
-        address = ''
-        if len(out) > 2:
-            address, v, data  = get_contract_info(out)
-            if address is None or v is None or data is None:
-                continue
-            candidates = get_candidates(out)
-            for c in candidates:
-                mec = MecenasContract(c,t.as_dict(),v=v, data=data)
-                if mec.address.to_ui_string() == address:
-                        print("asking")
-                        response = wallet.network.synchronous_get(
-                            ("blockchain.scripthash.listunspent", [mec.address.to_scripthash_hex()]))
-                        if unfunded_contract(response) : #skip unfunded and ended contracts
-                            continue
-                        contract_tuple_list.append(( response, mec, find_my_role(c, wallet)))
+        contract = scan_transaction(t, contract_cls)
+        if contract is None:
+            continue
+        response = wallet.network.synchronous_get(
+            ("blockchain.scripthash.listunspent", [contract.address.to_scripthash_hex()]))
+        print(contract.address.to_ui_string())
 
+        if unfunded_contract(response):  # skip unfunded and ended contracts
+            continue
+        a=contract.addresses
+        print("hello there", contract.address.to_ui_string())
+        contract_tuple_list.append((response, contract, find_my_role(a, wallet)))
     remove_duplicates(contract_tuple_list)
     return contract_tuple_list
-
 
 
 
@@ -38,6 +28,7 @@ def remove_duplicates(contracts):
         if c1[1].address == c2[1].address:
             c.remove(c1)
     return c
+
 
 def unfunded_contract(r):
     """Checks if the contract is funded"""
@@ -50,35 +41,45 @@ def unfunded_contract(r):
     return s
 
 
-def get_contract_info(outputs):
-    """Finds p2sh output"""
-    for o in outputs:
-        try:
-            assert isinstance(o[1], ScriptOutput)
-            assert o[1].to_ui_string().split(",")[1] == " (4) '>sh\\x00'"
-            a = o[1].to_ui_string().split("'")[3][:42]
-            version = int(o[1].to_ui_string().split("'")[3][42:])
-            data =[int(e) for e in o[1].to_ui_string().split("'")[5].split(' ')]
-            print("Data: ")
-            print(data)
-            assert 0 <= version <= 2 
-            return Address.from_string(a).to_ui_string(), version, data
-        except:
-            continue
-    return None, None, None
+def scan_transaction(tx, contract_cls):
+    out = tx.outputs()
+    address, v, data  = parse_p2sh_notification(out)
+    if address is None or v is None or data is None:
+        return
+    no_participants = contract_cls.participants(v)
+    if no_participants > (len(out)+1):
+        return None
+    candidates = get_candidates(out[1:], no_participants)
+    for c in candidates:
+        mec = contract_cls(c,tx.as_dict(),v=v, data=data)
+        if mec.address.to_ui_string() == address:
+            return mec
 
 
+def parse_p2sh_notification(outputs):
+    opreturn = outputs[0]
+    try:
+        assert isinstance(opreturn[1], ScriptOutput)
+        assert opreturn[1].to_ui_string().split(",")[1] == " (4) '>sh\\x00'"
+        a = opreturn[1].to_ui_string().split("'")[3][:42]
+        version = float(opreturn[1].to_ui_string().split("'")[3][42:])
+        data = [int(e) for e in opreturn[1].to_ui_string().split("'")[5].split(' ')]
+        return Address.from_string(a).to_ui_string(), version, data
+    except:
+        return None, None, None
 
-def get_candidates(outputs):
+
+def get_candidates(outputs, participants):
     """Creates all permutations of addresses that are not p2sh type"""
     candidates = []
-    for o1, o2 in permutations(outputs, 2):
-        if not (isinstance(o1[1], Address) and isinstance(o2[1], Address) ):
+    for o in permutations(outputs, participants):
+        kinds = [i[1].kind for i in o]
+        if 1 in kinds:
             continue
-        if o1[1].kind or o2[1].kind :
-            continue
-        candidates.append([o1[1], o2[1]])
+        addresses = [i[1] for i in o]
+        candidates.append(addresses)
     return candidates
+
 
 def find_my_role(candidates, wallet):
     """Returns my role in this contract. 0 is protege, 1 is mecenas"""
@@ -88,8 +89,4 @@ def find_my_role(candidates, wallet):
             roles.append(counter)
     if len(roles):
         return roles
-
-
-
-
 
