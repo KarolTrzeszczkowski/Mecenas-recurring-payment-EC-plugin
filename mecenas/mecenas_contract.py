@@ -15,7 +15,7 @@ PLEDGE = 1000
 PROTEGE = 0
 MECENAS = 1
 ESCROW = 2
-MONTH=6*24#5062
+MONTH=6*24*30#5062
 
 
 def joinbytes(iterable):
@@ -25,7 +25,6 @@ def joinbytes(iterable):
 
 class MecenasContract(Contract):
     """Contract of Mecenas"""
-
     def __init__(self, addresses, initial_tx=None,v=0, data=None):
         Contract.__init__(self, addresses,initial_tx,v)
         self.participants=2
@@ -110,26 +109,33 @@ class MecenasContract(Contract):
             Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, Op.OP_OVER, Op.OP_SIZE, Op.OP_NIP, Op.OP_8, Op.OP_SUB, Op.OP_SPLIT,
             Op.OP_13, Op.OP_PICK, Op.OP_15, Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_13, Op.OP_PICK, Op.OP_SIZE,
             Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_13, Op.OP_PICK, Op.OP_SHA256, Op.OP_16, Op.OP_PICK,
-            Op.OP_CHECKDATASIGVERIFY, 2, 232, 3, Op.OP_9, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK,
-            Op.OP_BIN2NUM, Op.OP_11, Op.OP_PICK, Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN, 1,
-            118, 1, 135, 1, 169, 1, 20, 1, 23, 1, 25, 1, 136, 1, 172, Op.OP_12, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT,
-            Op.OP_NIP, 1, 19, Op.OP_PICK, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, 1, 18, Op.OP_PICK, Op.OP_BIN2NUM,
-            Op.OP_2, Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT,
-            Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_OVER, Op.OP_HASH160, Op.OP_CAT,
-            Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_10, Op.OP_PICK,
-            Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, 1, 24, Op.OP_PICK, Op.OP_CAT,
-            Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3, Op.OP_PICK, Op.OP_CAT, Op.OP_2DUP, Op.OP_CAT, Op.OP_HASH256, 1, 19,
-            Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+            Op.OP_CHECKDATASIGVERIFY, 2, 232, 3, Op.OP_8, Op.OP_PICK, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, Op.OP_7,
+            Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_2, Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_OVER, Op.OP_BIN2NUM,
+            Op.OP_10, Op.OP_PICK, Op.OP_2, Op.OP_PICK, Op.OP_ADD, Op.OP_LESSTHANOREQUAL,
+            Op.OP_IF,
+            Op.OP_15, Op.OP_PICK, Op.OP_HASH160, Op.OP_12, Op.OP_PICK, Op.OP_EQUALVERIFY, Op.OP_14, Op.OP_PICK,
+            Op.OP_16, Op.OP_PICK, Op.OP_CHECKSIG,
+            Op.OP_ELSE,
+            Op.OP_9, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_11, Op.OP_PICK,
+            Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN, 1, 118, 1, 135, 1, 169, 1, 20, 1, 23, 1,
+            25, 1, 136, 1, 172, Op.OP_12, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT, Op.OP_NIP, Op.OP_9, Op.OP_PICK, Op.OP_5,
+            Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_OVER,
+            Op.OP_HASH160, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5, Op.OP_PICK,
+            Op.OP_CAT, Op.OP_10, Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT,
+            1, 24, Op.OP_PICK, Op.OP_CAT, Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3, Op.OP_PICK, Op.OP_CAT, Op.OP_2DUP,
+            Op.OP_CAT, Op.OP_HASH256, 1, 19, Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
             Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
-            Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
-            Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+            Op.OP_ENDIF, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+            Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
             Op.OP_ELSE,
             Op.OP_4, Op.OP_PICK, Op.OP_2, Op.OP_EQUAL,
             Op.OP_IF,
             Op.OP_6, Op.OP_PICK, Op.OP_HASH160, Op.OP_3, Op.OP_PICK, Op.OP_EQUALVERIFY, Op.OP_5, Op.OP_PICK, Op.OP_7,
             Op.OP_PICK, Op.OP_CHECKSIG, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
             Op.OP_ELSE,
-            Op.OP_FALSE, Op.OP_ENDIF, Op.OP_ENDIF
+            Op.OP_FALSE,
+            Op.OP_ENDIF,
+            Op.OP_ENDIF
 
         ])
         ## version with locktime for mecenas
@@ -147,19 +153,24 @@ class MecenasContract(Contract):
             Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, Op.OP_OVER, Op.OP_SIZE, Op.OP_NIP, Op.OP_8, Op.OP_SUB, Op.OP_SPLIT,
             Op.OP_14, Op.OP_PICK, Op.OP_16, Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_14, Op.OP_PICK, Op.OP_SIZE,
             Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_14, Op.OP_PICK, Op.OP_SHA256, 1, 17, Op.OP_PICK,
-            Op.OP_CHECKDATASIGVERIFY, 2, 232, 3, Op.OP_10, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK,
-            Op.OP_BIN2NUM, Op.OP_12, Op.OP_PICK, Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN, 1,
-            118, 1, 135, 1, 169, 1, 20, 1, 23, 1, 25, 1, 136, 1, 172, Op.OP_12, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT,
-            Op.OP_NIP, 1, 20, Op.OP_PICK, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, 1, 18, Op.OP_PICK, Op.OP_BIN2NUM,
-            Op.OP_2, Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT,
-            Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_OVER, Op.OP_HASH160, Op.OP_CAT,
-            Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_10, Op.OP_PICK,
-            Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, 1, 25, Op.OP_PICK, Op.OP_CAT,
-            Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3, Op.OP_PICK, Op.OP_CAT, Op.OP_2DUP, Op.OP_CAT, Op.OP_HASH256, 1, 19,
-            Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+            Op.OP_CHECKDATASIGVERIFY, 2, 232, 3, Op.OP_9, Op.OP_PICK, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, Op.OP_7,
+            Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_2, Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_OVER, Op.OP_BIN2NUM,
+            Op.OP_11, Op.OP_PICK, Op.OP_2, Op.OP_PICK, Op.OP_ADD, Op.OP_LESSTHANOREQUAL,
+            Op.OP_IF,
+            Op.OP_16, Op.OP_PICK, Op.OP_HASH160, Op.OP_13, Op.OP_PICK, Op.OP_EQUALVERIFY, Op.OP_15, Op.OP_PICK, 1, 17,
+            Op.OP_PICK, Op.OP_CHECKSIG,
+            Op.OP_ELSE,
+            Op.OP_10, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_12, Op.OP_PICK,
+            Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN, 1, 118, 1, 135, 1, 169, 1, 20, 1, 23, 1,
+            25, 1, 136, 1, 172, Op.OP_12, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT, Op.OP_NIP, Op.OP_9, Op.OP_PICK, Op.OP_5,
+            Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_OVER,
+            Op.OP_HASH160, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5, Op.OP_PICK,
+            Op.OP_CAT, Op.OP_10, Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT,
+            1, 25, Op.OP_PICK, Op.OP_CAT, Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3, Op.OP_PICK, Op.OP_CAT, Op.OP_2DUP,
+            Op.OP_CAT, Op.OP_HASH256, 1, 19, Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
             Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+            Op.OP_ENDIF, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
             Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
-            Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
             Op.OP_ELSE,
             Op.OP_5, Op.OP_PICK, Op.OP_2, Op.OP_EQUAL,
             Op.OP_IF,
@@ -167,7 +178,9 @@ class MecenasContract(Contract):
             Op.OP_EQUALVERIFY, Op.OP_6, Op.OP_PICK, Op.OP_8, Op.OP_PICK, Op.OP_CHECKSIG, Op.OP_NIP, Op.OP_NIP,
             Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
             Op.OP_ELSE,
-            Op.OP_FALSE, Op.OP_ENDIF, Op.OP_ENDIF
+            Op.OP_FALSE,
+            Op.OP_ENDIF,
+            Op.OP_ENDIF
 
         ])
         ## Escrow version of Mecenas
@@ -180,38 +193,44 @@ class MecenasContract(Contract):
                 3, self.i_time_bytes, 64,
                 Op.OP_5, Op.OP_PICK, Op.OP_TRUE, Op.OP_EQUAL,
                 Op.OP_IF,
-                    Op.OP_6, Op.OP_PICK, Op.OP_4, Op.OP_SPLIT, Op.OP_DROP, Op.OP_7, Op.OP_PICK, Op.OP_DUP, Op.OP_SIZE,
-                    Op.OP_NIP, 1, 40, Op.OP_SUB, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, 1, 32, Op.OP_SPLIT, Op.OP_DROP, Op.OP_9,
-                    Op.OP_PICK, Op.OP_DUP, Op.OP_SIZE, Op.OP_NIP, 1, 44, Op.OP_SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_DUP, 1,
-                    104, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, Op.OP_OVER, Op.OP_SIZE, Op.OP_NIP, Op.OP_8, Op.OP_SUB,
-                    Op.OP_SPLIT, Op.OP_14, Op.OP_PICK, Op.OP_16, Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_14, Op.OP_PICK,
-                    Op.OP_SIZE, Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_14, Op.OP_PICK, Op.OP_SHA256, 1, 17, Op.OP_PICK,
-                    Op.OP_CHECKDATASIGVERIFY, 2, 220, 5, Op.OP_9, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK,
-                    Op.OP_BIN2NUM, Op.OP_11, Op.OP_PICK, Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN,
-                    1, 118, 1, 135, 1, 169, 1, 20, 1, 23, 1, 25, 1, 136, 1, 172, Op.OP_12, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT,
-                    Op.OP_NIP, 1, 19, Op.OP_PICK, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP, 1, 18, Op.OP_PICK, Op.OP_BIN2NUM,
-                    Op.OP_2, Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT,
-                    Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT, Op.OP_OVER, Op.OP_HASH160, Op.OP_CAT,
-                    Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_10,
-                    Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, 1, 25,
-                    Op.OP_PICK, Op.OP_CAT, Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3, Op.OP_PICK, Op.OP_CAT, Op.OP_2DUP,
-                    Op.OP_CAT, Op.OP_HASH256, 1, 19, Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
-                    Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
-                    Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
-                    Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                Op.OP_6, Op.OP_PICK, Op.OP_4, Op.OP_SPLIT, Op.OP_DROP, Op.OP_7, Op.OP_PICK, Op.OP_DUP, Op.OP_SIZE,
+                Op.OP_NIP, 1, 40, Op.OP_SUB, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, 1, 32, Op.OP_SPLIT, Op.OP_DROP, Op.OP_9,
+                Op.OP_PICK, Op.OP_DUP, Op.OP_SIZE, Op.OP_NIP, 1, 44, Op.OP_SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_DUP, 1,
+                104, Op.OP_SPLIT, Op.OP_NIP, Op.OP_DUP, Op.OP_OVER, Op.OP_SIZE, Op.OP_NIP, Op.OP_8, Op.OP_SUB,
+                Op.OP_SPLIT, Op.OP_14, Op.OP_PICK, Op.OP_16, Op.OP_PICK, Op.OP_CHECKSIGVERIFY, Op.OP_14, Op.OP_PICK,
+                Op.OP_SIZE, Op.OP_1SUB, Op.OP_SPLIT, Op.OP_DROP, Op.OP_14, Op.OP_PICK, Op.OP_SHA256, 1, 17, Op.OP_PICK,
+                Op.OP_CHECKDATASIGVERIFY, 2, 220, 5, Op.OP_8, Op.OP_PICK, Op.OP_CHECKSEQUENCEVERIFY, Op.OP_DROP,
+                Op.OP_7, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_2, Op.OP_GREATERTHANOREQUAL, Op.OP_VERIFY, Op.OP_OVER,
+                Op.OP_BIN2NUM, Op.OP_10, Op.OP_PICK, Op.OP_2, Op.OP_PICK, Op.OP_ADD, Op.OP_LESSTHANOREQUAL,
+                Op.OP_IF,
+                Op.OP_16, Op.OP_PICK, Op.OP_HASH160, Op.OP_13, Op.OP_PICK, Op.OP_EQUALVERIFY, Op.OP_15, Op.OP_PICK, 1,
+                17, Op.OP_PICK, Op.OP_CHECKSIG,
                 Op.OP_ELSE,
-                    Op.OP_5, Op.OP_PICK, Op.OP_2, Op.OP_EQUAL,
-                    Op.OP_IF,
-                        Op.OP_9, Op.OP_PICK, Op.OP_HASH160, Op.OP_5, Op.OP_PICK, Op.OP_EQUAL, Op.OP_10, Op.OP_PICK,
-                        Op.OP_HASH160, Op.OP_5, Op.OP_PICK, Op.OP_EQUAL, Op.OP_BOOLOR, Op.OP_VERIFY, Op.OP_8,
-                        Op.OP_PICK, Op.OP_HASH160, Op.OP_3, Op.OP_PICK, Op.OP_EQUAL, Op.OP_9, Op.OP_PICK, Op.OP_HASH160,
-                        Op.OP_5, Op.OP_PICK, Op.OP_EQUAL, Op.OP_BOOLOR, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_9,
-                        Op.OP_PICK, Op.OP_EQUAL, Op.OP_NOT, Op.OP_VERIFY, Op.OP_7, Op.OP_PICK, Op.OP_10, Op.OP_PICK,
-                        Op.OP_CHECKSIGVERIFY, Op.OP_6, Op.OP_PICK, Op.OP_9, Op.OP_PICK, Op.OP_CHECKSIG, Op.OP_NIP,
-                        Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
-                    Op.OP_ELSE,
-                        Op.OP_FALSE,
-                    Op.OP_ENDIF,
+                Op.OP_9, Op.OP_PICK, Op.OP_8, Op.OP_NUM2BIN, Op.OP_2, Op.OP_PICK, Op.OP_BIN2NUM, Op.OP_11, Op.OP_PICK,
+                Op.OP_SUB, Op.OP_2, Op.OP_PICK, Op.OP_SUB, Op.OP_8, Op.OP_NUM2BIN, 1, 118, 1, 135, 1, 169, 1, 20, 1, 23,
+                1, 25, 1, 136, 1, 172, Op.OP_12, Op.OP_PICK, Op.OP_3, Op.OP_SPLIT, Op.OP_NIP, Op.OP_9, Op.OP_PICK,
+                Op.OP_5, Op.OP_PICK, Op.OP_CAT, Op.OP_7, Op.OP_PICK, Op.OP_CAT, Op.OP_6, Op.OP_PICK, Op.OP_CAT,
+                Op.OP_OVER, Op.OP_HASH160, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_11, Op.OP_PICK, Op.OP_5,
+                Op.OP_PICK, Op.OP_CAT, Op.OP_10, Op.OP_PICK, Op.OP_CAT, Op.OP_8, Op.OP_PICK, Op.OP_CAT, Op.OP_7,
+                Op.OP_PICK, Op.OP_CAT, 1, 25, Op.OP_PICK, Op.OP_CAT, Op.OP_4, Op.OP_PICK, Op.OP_CAT, Op.OP_3,
+                Op.OP_PICK, Op.OP_CAT, Op.OP_2DUP, Op.OP_CAT, Op.OP_HASH256, 1, 19, Op.OP_PICK, Op.OP_EQUAL, Op.OP_NIP,
+                Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_ENDIF, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                Op.OP_ELSE,
+                Op.OP_5, Op.OP_PICK, Op.OP_2, Op.OP_EQUAL,
+                Op.OP_IF,
+                Op.OP_9, Op.OP_PICK, Op.OP_HASH160, Op.OP_5, Op.OP_PICK, Op.OP_EQUAL, Op.OP_10, Op.OP_PICK,
+                Op.OP_HASH160, Op.OP_5, Op.OP_PICK, Op.OP_EQUAL, Op.OP_BOOLOR, Op.OP_VERIFY, Op.OP_8, Op.OP_PICK,
+                Op.OP_HASH160, Op.OP_3, Op.OP_PICK, Op.OP_EQUAL, Op.OP_9, Op.OP_PICK, Op.OP_HASH160, Op.OP_5,
+                Op.OP_PICK, Op.OP_EQUAL, Op.OP_BOOLOR, Op.OP_VERIFY, Op.OP_9, Op.OP_PICK, Op.OP_9, Op.OP_PICK,
+                Op.OP_EQUAL, Op.OP_NOT, Op.OP_VERIFY, Op.OP_7, Op.OP_PICK, Op.OP_10, Op.OP_PICK, Op.OP_CHECKSIGVERIFY,
+                Op.OP_6, Op.OP_PICK, Op.OP_9, Op.OP_PICK, Op.OP_CHECKSIG, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP, Op.OP_NIP,
+                Op.OP_ELSE,
+                Op.OP_FALSE,
+                Op.OP_ENDIF,
                 Op.OP_ENDIF
 
             ])
@@ -233,7 +252,12 @@ class MecenasContract(Contract):
         else:
             return 2
 
-
+    @staticmethod
+    def fee(version):
+        if version == 3:
+            return 1500
+        else:
+            return 1000
 
     def set_version(self, v):
         if v == 1:
@@ -248,6 +272,7 @@ class MecenasContract(Contract):
         elif v == 3:
             self.version = 3
             self.participants = 3
+            self.fee = 1500
             self.redeemscript = self.redeemscript_v3
         else:
             self.version = 1
@@ -369,9 +394,16 @@ class ContractManager:
 
     def pledge_tx(self):
         inputs = self.txin
-        outputs = [
-            (TYPE_ADDRESS, self.contract.address, self.value - self.fee - self.rpayment),
-            (TYPE_ADDRESS, self.contract.addresses[PROTEGE], self.rpayment)        ]
+        print("creating pledge tx")
+        if self.value - self.fee - self.rpayment>0:
+            outputs = [
+                (TYPE_ADDRESS, self.contract.address, self.value - self.fee - self.rpayment),
+                (TYPE_ADDRESS, self.contract.addresses[PROTEGE], self.rpayment)]
+        else:
+            print("single output")
+            outputs = [
+                (TYPE_ADDRESS, self.contract.addresses[PROTEGE], self.value - self.fee)]
+
         tx = Transaction.from_io(inputs, outputs, locktime=0)
         tx.version = 2
         #print(tx.outputs())

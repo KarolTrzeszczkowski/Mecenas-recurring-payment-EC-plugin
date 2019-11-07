@@ -10,9 +10,10 @@ from electroncash.transaction import Transaction,TYPE_ADDRESS, TYPE_SCRIPT, Seri
 from electroncash_gui.qt.amountedit  import BTCAmountEdit
 from electroncash.i18n import _
 from electroncash_gui.qt.util import *
-from electroncash.wallet import Multisig_Wallet
+from electroncash.wallet import Multisig_Wallet, ImportedPrivkeyWallet
 from electroncash.util import NotEnoughFunds, ServerErrorResponse
 from electroncash_gui.qt.transaction_dialog import show_transaction
+
 from .contract_finder import find_contract_in_wallet
 from .mecenas_contract import ContractManager, UTXO, CONTRACT, MODE, PROTEGE, MECENAS, ESCROW
 from .util import *
@@ -96,7 +97,10 @@ class Intro(QDialog, MessageBoxMixin):
                     print("watch only")
                     priv = None
                 try:
-                    public = self.wallet.get_public_keys(my_address)
+                    if isinstance(self.wallet, ImportedPrivkeyWallet):
+                        public = [self.wallet.keystore.address_to_pubkey(my_address).to_ui_string()]
+                    else:
+                        public = self.wallet.get_public_keys(my_address)
                     public_keys[contract_tuple_list.index(t)][m]=public[0]
                     keypairs[public[0]] = priv
                 except Exception as ex:
@@ -174,6 +178,7 @@ class Create(QDialog, MessageBoxMixin):
         self.total_value=0
         self.rpayment_value=0
         self.rpayment_time=0
+        self.reps=0
         index = self.wallet.get_address_index(self.mecenas_address)
         key = self.wallet.keystore.get_private_key(index,self.password)
         self.privkey = int.from_bytes(key[0], 'big')
@@ -260,12 +265,10 @@ class Create(QDialog, MessageBoxMixin):
             # if any of the txid/out#/value changes
         try:
             self.protege_address = Address.from_string(self.protege_address_wid.text())
-            reps = int(self.repetitions.text())
+            self.reps = int(self.repetitions.text())
             self.rpayment_time = int(self.rpayment_time_wid.text())*3600*24//512
             self.rpayment_value = self.rpayment_value_wid.get_amount()
-            self.total_value = reps*(self.rpayment_value + 1000)
-            total_time = int(self.rpayment_time_wid.text()) * reps
-            self.total_label.setText("<b>%s</b>" % (self.main_window.format_amount(self.total_value) + " " + self.main_window.base_unit()))
+            total_time = int(self.rpayment_time_wid.text()) * self.reps
             self.total_time_label.setText("<b>%s</b>" % (str(total_time) + " days" ))
 
             if self.advanced_wid.option == 2:
@@ -281,12 +284,19 @@ class Create(QDialog, MessageBoxMixin):
             elif self.advanced_wid.option == 4:
                 self.version = 1
                 self.addresses = [self.protege_address, self.mecenas_address]
-        except:
+            self.total_value = self.reps * (self.rpayment_value + MecenasContract.fee(self.version))
+            self.total_label.setText(
+                    "<b>%s</b>" % (
+                                self.main_window.format_amount(self.total_value) + " " + self.main_window.base_unit()))
+
+        except Exception as e:
             self.create_button.setDisabled(True)
+            print(e)
         else:
             self.create_button.setDisabled(False)
             # PROTEGE is 0, MECENAS is 1
             self.contract = MecenasContract(self.addresses, v=self.version, data=[self.rpayment_time, self.rpayment_value])
+
 
     def build_otputs(self):
         outputs = []
@@ -324,6 +334,7 @@ class Create(QDialog, MessageBoxMixin):
         tx.version=2
         try:
             self.main_window.network.broadcast_transaction2(tx)
+            #show_transaction(tx, self.main_window, "Create Contract", prompt_if_unsaved=True)
         except:
             pass
         self.create_button.setText("Creating Mecenas Contract...")
@@ -550,21 +561,17 @@ class Manage(QDialog, MessageBoxMixin):
                 inputs['scriptSig']=inputs['scriptSig'][:-(len(sig)+len(pk)+10)]+pk+'1234567890'+sig
                 tx.raw = tx.serialize()
                 print("ScriptPK", self.manager.script_pub_key)
-                try:
-                    self.main_window.network.broadcast_transaction2(tx)
-                except ServerErrorResponse as e:
-                    bip68msg = 'the transaction was rejected by network rules.\n\nnon-BIP68-final (code 64)'
-                    if bip68msg in e.server_msg['message']:
-                        self.show_error("Not ready yet!")
-                    else:
-                        self.show_error(e.server_msg)
+                show_transaction(tx, self.main_window, "End Contract", prompt_if_unsaved=True)
                 return
             else:
                 try:
                     inputs = self.manager.txin
                     tx = self.manager.end_tx(inputs)
+                    complete = self.manager.complete_method()
+                    if not self.wallet.is_watching_only():
+                        self.manager.signtx(tx)
+                        complete(tx)
                     self.main_window.network.broadcast_transaction2(tx)
-                    print("OUT", out)
                 except ServerErrorResponse as e:
                     bip68msg = 'the transaction was rejected by network rules.\n\nnon-BIP68-final (code 64)'
                     if bip68msg in e.server_msg['message']:
