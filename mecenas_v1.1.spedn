@@ -1,15 +1,16 @@
-// Mecenas Contract, version 2.0 
-// 
-// Contract can be ended only when Protege is inactive for (period2 - period)
-// On compilation period2 should be larger than period of the contract
+// Mecenas Contract, version 1.1 
+
+// Changes from v. 1 :
+// Challenge protege takes full preimage as an argument
+// Recurring period is passed as argument instead of being hardcoded
 // The last payment is claimable.
+
 
 contract Mecenas(
     Ripemd160 receiverPKH, 
     Ripemd160 patronPKH, 
     int pledge, 
-    TimeSpan period,
-    TimeSpan period2
+    TimeSpan period
     ) {
 
         challenge refresh(PubKey pk, Sig sig, bin preimage){
@@ -50,8 +51,7 @@ contract Mecenas(
             verify hash256(out1 . out2) == Sha256(hashOutput);}
     } 
 
-    challenge mecenas(PubKey patronPK, Sig sig) {
-        verify checkSequence(period2);
+    challenge patron(PubKey patronPK, Sig sig) {
         verify hash160(patronPK) == patronPKH;
         verify checkSig(sig, patronPK);
     }
