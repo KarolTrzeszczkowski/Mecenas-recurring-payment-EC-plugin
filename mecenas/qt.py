@@ -130,11 +130,12 @@ class Plugin(BasePlugin):
 
             self.mecenas_tabs[wallet_name] = tab
             self.mecenas_tab[wallet_name] = l
-            window.tabs.addTab(tab, self._get_icon(), _('Mecenas'))
             if old_tab:
                 window.tabs.removeTab(i)
                 old_tab.searchable_list.deleteLater()
                 old_tab.deleteLater()
+            window.tabs.insertTab(i,tab, self._get_icon(), _('Simple Escrow Plugin'))
+            window.tabs.setCurrentIndex(i)
         except Exception as e:
             self.print_error(repr(e))
             return

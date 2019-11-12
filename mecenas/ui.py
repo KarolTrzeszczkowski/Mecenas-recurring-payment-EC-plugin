@@ -504,7 +504,11 @@ class Manage(QDialog, MessageBoxMixin):
     def on_load(self):
         tx=None
         try:
-            tx = self.main_window.read_tx_from_file(fileName=None)
+            text = text_dialog(self.top_level_window(), _('Input raw transaction'), _("Transaction:"),
+                               _("Load transaction"))
+            if not text:
+                return
+            tx = self.main_window.tx_from_text(text)
         except SerializationError as e:
             self.show_critical(_("Electron Cash was unable to deserialize the transaction:") + "\n" + str(e))
         if tx:
@@ -544,7 +548,7 @@ class Manage(QDialog, MessageBoxMixin):
     def end(self):
         print("end")
         yorn=self.main_window.question(_(
-                 "Do you wish to take the payment?"))
+                 "Do you wish to terminate the contract?"))
         if yorn:
             if self.manager.version == 3:
                 inputs = self.manager.txin
@@ -558,10 +562,12 @@ class Manage(QDialog, MessageBoxMixin):
                 sig = inputs['signatures'][0]
                 pk = inputs["x_pubkeys"][0]
                 print('SIGNATURE', sig)
+                print("lensig", len(sig))
+                print("lenpk", len(pk))
                 inputs['scriptSig']=inputs['scriptSig'][:-(len(sig)+len(pk)+10)]+pk+'1234567890'+sig
                 tx.raw = tx.serialize()
                 print("ScriptPK", self.manager.script_pub_key)
-                show_transaction(tx, self.main_window, "End Contract", prompt_if_unsaved=True)
+                self.main_window.show_message("Double click to select and send this to another party:\n\n"+tx.raw)
                 return
             else:
                 try:
