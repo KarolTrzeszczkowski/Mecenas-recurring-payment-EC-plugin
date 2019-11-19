@@ -3,7 +3,7 @@
     "version": "1.2.1",
     "description": "Become a patron for a favorite creator",
     "project_url": "https://github.com/KarolTrzeszczkowski/Electron-Cash-Mecenas-Plugin/",
-    "minimum_ec_version": "4.0.10",
+    "minimum_ec_version": "4.0.11",
     "package_name": "mecenas",
     "available_for": [
         "qt"
