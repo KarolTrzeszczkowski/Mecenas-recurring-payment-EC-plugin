@@ -15,7 +15,7 @@ PLEDGE = 1000
 PROTEGE = 0
 MECENAS = 1
 ESCROW = 2
-MONTH=6*24*30#5062
+MONTH=5062
 
 
 def joinbytes(iterable):
