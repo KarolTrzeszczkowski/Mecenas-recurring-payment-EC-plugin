@@ -200,14 +200,8 @@ class Create(QDialog, MessageBoxMixin):
         l = QLabel(_("Redeem address") + ": auto (this wallet)")  # self.refreshing_address.to_ui_string())
         vbox.addWidget(l)
 
-
-
-
-
         l = QLabel(_("Protege address: "))
         vbox.addWidget(l)
-
-
 
         self.protege_address_wid = QLineEdit()
         self.protege_address_wid.textEdited.connect(self.mecenate_info_changed)
@@ -568,6 +562,7 @@ class Manage(QDialog, MessageBoxMixin):
                 tx.raw = tx.serialize()
                 print("ScriptPK", self.manager.script_pub_key)
                 self.main_window.show_message("Double click to select and send this to another party:\n\n"+tx.raw)
+                self.update_buttons()
                 return
             else:
                 try:
