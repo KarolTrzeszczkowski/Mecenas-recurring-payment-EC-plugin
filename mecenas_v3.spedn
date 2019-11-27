@@ -26,7 +26,7 @@ contract Mecenas(Ripemd160 receiverPKH,
         verify checkSequence(period);
         verify bin2num(ver) >= 2;
 
-        if (bin2num(value) <= pledge +fee) {
+        if (bin2num(value) <= pledge + fee) {
             verify hash160(pk) == receiverPKH;
             verify checkSig(sig,pk);}
         else {
