@@ -182,11 +182,23 @@ class Create(QDialog, MessageBoxMixin):
         index = self.wallet.get_address_index(self.mecenas_address)
         key = self.wallet.keystore.get_private_key(index,self.password)
         self.privkey = int.from_bytes(key[0], 'big')
-
         if isinstance(self.wallet, Multisig_Wallet):
             self.main_window.show_error(
                 "Mecenas is designed for single signature wallet only right now")
 
+        self.cashaccounts = self.wallet.cashacct.get_wallet_cashaccounts()
+        self.my_addresses = dict()
+        for i in self.cashaccounts:
+            self.my_addresses[i.name]=i.address
+        self.my_addresses["anonymous donation"] = self.wallet.get_unused_address()
+        my_addy_combo = QComboBox()
+        my_addy_combo.addItems(list(self.my_addresses.keys()))
+        my_addy_combo.setCurrentIndex(0)
+        self.selected_distribution = 0
+        def on_mecenas_address():
+            self.mecenas_address = list(self.my_addresses.values())[my_addy_combo.currentIndex()]
+
+        my_addy_combo.currentIndexChanged.connect(on_mecenas_address)
         vbox = QVBoxLayout()
         self.setLayout(vbox)
         hbox = QHBoxLayout()
@@ -197,9 +209,13 @@ class Create(QDialog, MessageBoxMixin):
         b = QPushButton(_("Home"))
         b.clicked.connect(lambda: self.plugin.switch_to(Intro, self.wallet_name, None, None))
         hbox.addWidget(b)
-        l = QLabel(_("Redeem address") + ": auto (this wallet)")  # self.refreshing_address.to_ui_string())
-        vbox.addWidget(l)
 
+        l = QLabel(_("Redeem address") + ":")  # self.refreshing_address.to_ui_string())
+        hbox = QHBoxLayout()
+        vbox.addLayout(hbox)
+        hbox.addWidget(l)
+        hbox.addWidget(my_addy_combo)
+        hbox.addStretch(1)
         l = QLabel(_("Protege address: "))
         vbox.addWidget(l)
 
