@@ -439,7 +439,7 @@ class ContractTree(MessageBoxMixin, PrintError, MyTreeWidget):
         blockchain = self.main_window.network.blockchain()
         mtp = blockchain.get_median_time_past # in epoch seconds
         currentHeight = self.main_window.network.get_local_height()
-        age = (mtp(currentHeight)-mtp(txHeight))//60 # in hours
+        age = (mtp(currentHeight)-mtp(txHeight))//3600 # in hours
         return age
 
     def estimate_expiration(self, entry, ctuple):
