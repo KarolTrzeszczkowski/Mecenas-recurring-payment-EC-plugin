@@ -189,7 +189,7 @@ class Create(QDialog, MessageBoxMixin):
         self.cashaccounts = self.wallet.cashacct.get_wallet_cashaccounts()
         self.my_addresses = dict()
         for i in self.cashaccounts:
-            self.my_addresses[i.name]=i.address
+            self.my_addresses[i.name + '#' + str(i.number)]=i.address
         self.my_addresses["anonymous donation"] = self.wallet.get_unused_address()
         my_addy_combo = QComboBox()
         my_addy_combo.addItems(list(self.my_addresses.keys()))
@@ -439,14 +439,14 @@ class ContractTree(MessageBoxMixin, PrintError, MyTreeWidget):
         blockchain = self.main_window.network.blockchain()
         mtp = blockchain.get_median_time_past # in epoch seconds
         currentHeight = self.main_window.network.get_local_height()
-        age = (mtp(currentHeight)-mtp(txHeight))//60
+        age = (mtp(currentHeight)-mtp(txHeight))//60 # in hours
         return age
 
     def estimate_expiration(self, entry, ctuple):
         """estimates age of the utxo in days. There are 144 blocks per day on average"""
         txHeight = entry.get("height")
         age = self.get_age(entry)
-        contract_i_time=ceil((ctuple[CONTRACT].i_time * 512) / (3600))
+        contract_i_time=ceil((ctuple[CONTRACT].i_time * 512) / (3600)) # in hours
         if txHeight==0 :
             label = _("Waiting for confirmation.")
         elif (contract_i_time-age) >= 0:
