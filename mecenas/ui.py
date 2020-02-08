@@ -189,16 +189,12 @@ class Create(QDialog, MessageBoxMixin):
         self.cashaccounts = self.wallet.cashacct.get_wallet_cashaccounts()
         self.my_addresses = dict()
         for i in self.cashaccounts:
-            self.my_addresses[i.name + '#' + str(i.number)]=i.address
+            self.my_addresses[i.name + '#' + str(i.number)] = i.address
         self.my_addresses["anonymous donation"] = self.wallet.get_unused_address()
-        my_addy_combo = QComboBox()
-        my_addy_combo.addItems(list(self.my_addresses.keys()))
-        my_addy_combo.setCurrentIndex(0)
-        self.selected_distribution = 0
-        def on_mecenas_address():
-            self.mecenas_address = list(self.my_addresses.values())[my_addy_combo.currentIndex()]
+        self.my_addy_combo = QComboBox()
+        self.my_addy_combo.addItems(list(self.my_addresses.keys()))
+        self.my_addy_combo.currentIndexChanged.connect(self.mecenate_info_changed)
 
-        my_addy_combo.currentIndexChanged.connect(on_mecenas_address)
         vbox = QVBoxLayout()
         self.setLayout(vbox)
         hbox = QHBoxLayout()
@@ -214,7 +210,7 @@ class Create(QDialog, MessageBoxMixin):
         hbox = QHBoxLayout()
         vbox.addLayout(hbox)
         hbox.addWidget(l)
-        hbox.addWidget(my_addy_combo)
+        hbox.addWidget(self.my_addy_combo)
         hbox.addStretch(1)
         l = QLabel(_("Protege address: "))
         vbox.addWidget(l)
@@ -274,6 +270,7 @@ class Create(QDialog, MessageBoxMixin):
     def mecenate_info_changed(self, ):
             # if any of the txid/out#/value changes
         try:
+            self.mecenas_address = list(self.my_addresses.values())[self.my_addy_combo.currentIndex()]
             self.protege_address = Address.from_string(self.protege_address_wid.text())
             self.reps = int(self.repetitions.text())
             self.rpayment_time = int(self.rpayment_time_wid.text())*3600*24//512
