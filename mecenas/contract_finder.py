@@ -10,13 +10,14 @@ def find_contract_in_wallet(wallet, contract_cls):
             continue
         response = wallet.network.synchronous_get(
             ("blockchain.scripthash.listunspent", [contract.address.to_scripthash_hex()]))
-        print(contract.address.to_ui_string())
+        #print(contract.address.to_ui_string())
 
         if unfunded_contract(response):  # skip unfunded and ended contracts
             continue
         a=contract.addresses
         print("hello there", contract.address.to_ui_string())
         contract_tuple_list.append((response, contract, find_my_role(a, wallet)))
+
     remove_duplicates(contract_tuple_list)
     return contract_tuple_list
 

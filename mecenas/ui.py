@@ -433,6 +433,8 @@ class ContractTree(MessageBoxMixin, PrintError, MyTreeWidget):
 
     def get_age(self, entry):
         txHeight = entry.get("height")
+        if not txHeight:
+            txHeight = self.main_window.network.get_local_height()
         blockchain = self.main_window.network.blockchain()
         mtp = blockchain.get_median_time_past # in epoch seconds
         currentHeight = self.main_window.network.get_local_height()
