@@ -1,5 +1,5 @@
 from electroncash.i18n import _
 
-fullname = 'last-will-plugin'
-description = _('Plugin last-will-plugin')
+fullname = 'Mecenas'
+description = _('Become a patron for a favorite creator')
 available_for = ['qt']
