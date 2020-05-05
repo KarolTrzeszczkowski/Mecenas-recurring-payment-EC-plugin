@@ -2,7 +2,7 @@ from electroncash.address import  OpCodes
 import time
 
 
-EXPIRY =time.strptime("1 05 2020", "%d %m %Y")
+EXPIRY =time.strptime("1 08 2020", "%d %m %Y")
 
 def make_opreturn(data):
     """Turn data bytes into a single-push opreturn script"""
