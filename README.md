@@ -1,4 +1,6 @@
 # Mecenas - recurring payment smart contract plugin
+![Logo](/pictures/logo.svg)
+
 Mecenas was created as **a solution** for bitcoin **patronate** exit scam risk. The plugin create and manage a contract that shifts the responsibility for making the transaction from the sender to the receiver with time and value restriction.
 
 ## Features:
